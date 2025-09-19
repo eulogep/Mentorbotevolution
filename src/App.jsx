@@ -361,7 +361,7 @@ function App() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">Apprentissage Collaboratif</h2>
-                  <p className="text-pink-100">Rejoignez des groupes d'étude et bénéficiez de mentorat</p>
+                  <p className="text-pink-100">Rejoignez des groupes d'��tude et bénéficiez de mentorat</p>
                 </div>
               </div>
             </div>
@@ -509,6 +509,9 @@ function App() {
                 </div>
                 <div className="text-xs text-gray-500">Objectif: {progressData.targetScore}</div>
               </div>
+              <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-sm" size="sm">
+                Commencer
+              </Button>
               <Button variant="outline" size="sm" className="hover:shadow-lg transition-all duration-200">
                 <Settings className="h-4 w-4" />
               </Button>
@@ -516,6 +519,23 @@ function App() {
           </div>
         </div>
       </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-100 p-6 md:p-10 border border-emerald-100 shadow-xl animate-fade-in-up">
+          <div className="absolute -top-10 -left-10 h-40 w-40 rounded-full bg-emerald-300/30 blur-3xl" />
+          <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-green-400/20 blur-3xl" />
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight">Préparez le TOEIC avec l'IA</h2>
+              <p className="mt-2 text-gray-600">Plans intelligents, répétition espacée, et analytics pour atteindre 800+.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-lg px-5 py-2 rounded-md">Commencer gratuitement</Button>
+              <Button variant="outline" className="border-2">Voir la démo</Button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-8">
@@ -677,4 +697,3 @@ function App() {
 }
 
 export default App;
-
