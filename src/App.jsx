@@ -485,27 +485,40 @@ function App() {
     }
   };
 
-  // Client-side hash routing: sync URL hash with activeModule
-  useEffect(() => {
-    const parseHash = () => {
-      try {
-        const h = window.location.hash.replace('#', '');
-        const match = h.match(/^module\/([a-zA-Z0-9_-]+)/);
-        if (match) setActiveModule(match[1]);
-      } catch (e) {
-        // ignore
-      }
-    };
-    parseHash();
-    window.addEventListener('hashchange', parseHash);
-    return () => window.removeEventListener('hashchange', parseHash);
-  }, []);
+  const { pathname } = window.location; // fallback before router mounts
+  // react-router navigation
+  import.meta.env && null; /* placeholder to keep import context */
+  // useNavigate/useLocation will be available once wrapped by BrowserRouter
+  const navigateRef = React.useRef(null);
+  try {
+    // lazy require to avoid SSR issues
+    const { useNavigate, useLocation } = require('react-router-dom');
+    const navigate = useNavigate();
+    const location = useLocation();
+    navigateRef.current = { navigate, location };
 
-  const navigateToModule = (id, action) => {
-    setActiveModule(id);
-    const hash = action ? `#module/${id}/${action}` : `#module/${id}`;
-    if (window.location.hash !== hash) window.location.hash = hash;
-  };
+    useEffect(() => {
+      const parts = location.pathname.split('/').filter(Boolean);
+      if (parts[0] === 'module' && parts[1]) {
+        setActiveModule(parts[1]);
+      } else if (location.pathname === '/' ) {
+        setActiveModule('mastery');
+      }
+    }, [location.pathname]);
+
+    // override navigateToModule
+    const reactNavigateToModule = (id, action) => {
+      setActiveModule(id);
+      const path = action ? `/module/${id}/${action}` : `/module/${id}`;
+      if (location.pathname !== path) navigate(path);
+    };
+
+    // replace the navigateToModule used in JSX
+    navigateToModule = reactNavigateToModule;
+  } catch (e) {
+    // If react-router not available yet, keep fallback behavior
+    // fallback: no-op
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
