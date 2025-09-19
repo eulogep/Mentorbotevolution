@@ -485,6 +485,28 @@ function App() {
     }
   };
 
+  // Client-side hash routing: sync URL hash with activeModule
+  useEffect(() => {
+    const parseHash = () => {
+      try {
+        const h = window.location.hash.replace('#', '');
+        const match = h.match(/^module\/([a-zA-Z0-9_-]+)/);
+        if (match) setActiveModule(match[1]);
+      } catch (e) {
+        // ignore
+      }
+    };
+    parseHash();
+    window.addEventListener('hashchange', parseHash);
+    return () => window.removeEventListener('hashchange', parseHash);
+  }, []);
+
+  const navigateToModule = (id, action) => {
+    setActiveModule(id);
+    const hash = action ? `#module/${id}/${action}` : `#module/${id}`;
+    if (window.location.hash !== hash) window.location.hash = hash;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
       {/* En-tête avec glassmorphism */}
@@ -586,8 +608,12 @@ function App() {
 
         {/* Fonctionnalités principales (grid) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {modules.slice(0,6).map((m) => (
-            <Card key={m.id} className="hover:shadow-xl transition-all duration-200 border-0">
+          {modules.slice(0,6).map((m, idx) => (
+            <Card
+              key={m.id}
+              className="hover:shadow-xl transition-all duration-200 border-0 animate-fade-in-up"
+              style={{ animationDelay: `${idx * 80}ms` }}
+            >
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${m.gradient} flex items-center justify-center text-white shadow`}>
@@ -597,8 +623,8 @@ function App() {
                     <div className="font-semibold">{m.name}</div>
                     <div className="text-sm text-gray-600 mt-1">{m.description}</div>
                     <div className="mt-4 flex items-center gap-3">
-                      <Button className={`bg-gradient-to-r ${m.gradient} text-white px-3 py-1 rounded-md`} size="sm">Voir</Button>
-                      <Button variant="outline" size="sm">Essayer</Button>
+                      <Button onClick={() => navigateToModule(m.id)} className={`bg-gradient-to-r ${m.gradient} text-white px-3 py-1 rounded-md`} size="sm">Voir</Button>
+                      <Button onClick={() => navigateToModule(m.id, 'try')} variant="outline" size="sm">Essayer</Button>
                     </div>
                   </div>
                 </div>
