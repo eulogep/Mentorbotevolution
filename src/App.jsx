@@ -537,6 +537,78 @@ function App() {
         </div>
       </div>
 
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Comment ça marche */}
+        <div className="bg-white/80 backdrop-blur-lg border border-gray-100 rounded-2xl p-6 md:p-8 shadow-lg mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <h3 className="text-xl md:text-2xl font-bold">Comment ça marche</h3>
+              <p className="text-gray-600 mt-2">Suivez ces étapes simples pour créer un plan personnalisé et progresser efficacement vers votre objectif TOEIC.</p>
+            </div>
+            <div className="flex gap-3">
+              <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-lg px-4 py-2 rounded-md">Commencer</Button>
+              <Button variant="outline" className="border-2">Voir la démo</Button>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow">
+                <BookOpen className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="font-semibold">1. Définissez votre objectif</div>
+                <div className="text-sm text-gray-600">Indiquez votre score cible et votre disponibilité.</div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-white shadow">
+                <Clock className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="font-semibold">2. Suivez un plan intelligent</div>
+                <div className="text-sm text-gray-600">Plan généré par IA + répétition espacée pour maximiser la rétention.</div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white shadow">
+                <Zap className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="font-semibold">3. Pratiquez & analysez</div>
+                <div className="text-sm text-gray-600">Quiz adaptatifs, chat IA et analytics pour ajuster votre trajectoire.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fonctionnalités principales (grid) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {modules.slice(0,6).map((m) => (
+            <Card key={m.id} className="hover:shadow-xl transition-all duration-200 border-0">
+              <CardContent className="p-5">
+                <div className="flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${m.gradient} flex items-center justify-center text-white shadow`}>
+                    <m.icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold">{m.name}</div>
+                    <div className="text-sm text-gray-600 mt-1">{m.description}</div>
+                    <div className="mt-4 flex items-center gap-3">
+                      <Button className={`bg-gradient-to-r ${m.gradient} text-white px-3 py-1 rounded-md`} size="sm">Voir</Button>
+                      <Button variant="outline" size="sm">Essayer</Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+      </section>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-8">
           {/* Sidebar moderne avec glassmorphism */}
