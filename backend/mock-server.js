@@ -1,5 +1,5 @@
-const http = require('http');
-const url = require('url');
+import http from 'http';
+import url from 'url';
 
 const subjects = [
   { id: 1, name: 'Listening', target_score: 400, current_score: 340 },
