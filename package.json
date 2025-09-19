@@ -12,7 +12,9 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",
-    "vercel-build": "vite build"
+    "vercel-build": "vite build",
+    "mock-backend": "node backend/mock-server.js",
+    "dev:full": "concurrently \"npm run dev\" \"npm run mock-backend\""
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.7",
@@ -34,6 +36,7 @@
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
     "autoprefixer": "^10.4.14",
+    "concurrently": "^9.2.1",
     "eslint": "^8.45.0",
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
