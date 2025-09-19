@@ -553,7 +553,7 @@ function App() {
             </div>
             <div className="flex items-center gap-3">
               <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-lg px-5 py-2 rounded-md">Commencer gratuitement</Button>
-              <Button variant="outline" className="border-2">Voir la démo</Button>
+              <Button variant="outline" className="border-2" onClick={() => navigateToModule('ai-tools','demo')}>Voir la démo</Button>
             </div>
           </div>
         </div>
