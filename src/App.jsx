@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Brain, Target, Users, Zap, BookOpen, BarChart3, Calendar, Settings, Sparkles, TrendingUp, Clock, Award } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card.jsx';
 import { Button } from './components/ui/button.jsx';
