@@ -8,7 +8,6 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { Brain, Target, Users, Zap, BookOpen, BarChart3, Calendar, Settings, Sparkles, TrendingUp, Clock, Award } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card.jsx';
 import { Button } from './components/ui/button.jsx';
@@ -362,7 +361,7 @@ function App() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">Apprentissage Collaboratif</h2>
-                  <p className="text-pink-100">Rejoignez des groupes d'��tude et bénéficiez de mentorat</p>
+                  <p className="text-pink-100">Rejoignez des groupes d'étude et bénéficiez de mentorat</p>
                 </div>
               </div>
             </div>
@@ -486,24 +485,6 @@ function App() {
     }
   };
 
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    const parts = location.pathname.split('/').filter(Boolean);
-    if (parts[0] === 'module' && parts[1]) {
-      setActiveModule(parts[1]);
-    } else if (location.pathname === '/') {
-      setActiveModule('mastery');
-    }
-  }, [location.pathname]);
-
-  const navigateToModule = (id, action) => {
-    setActiveModule(id);
-    const path = action ? `/module/${id}/${action}` : `/module/${id}`;
-    if (location.pathname !== path) navigate(path);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
       {/* En-tête avec glassmorphism */}
@@ -528,9 +509,6 @@ function App() {
                 </div>
                 <div className="text-xs text-gray-500">Objectif: {progressData.targetScore}</div>
               </div>
-              <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-sm" size="sm">
-                Commencer
-              </Button>
               <Button variant="outline" size="sm" className="hover:shadow-lg transition-all duration-200">
                 <Settings className="h-4 w-4" />
               </Button>
@@ -538,99 +516,6 @@ function App() {
           </div>
         </div>
       </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-100 p-6 md:p-10 border border-emerald-100 shadow-xl animate-fade-in-up">
-          <div className="absolute -top-10 -left-10 h-40 w-40 rounded-full bg-emerald-300/30 blur-3xl" />
-          <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-green-400/20 blur-3xl" />
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div>
-              <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight">Préparez le TOEIC avec l'IA</h2>
-              <p className="mt-2 text-gray-600">Plans intelligents, répétition espacée, et analytics pour atteindre 800+.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-lg px-5 py-2 rounded-md">Commencer gratuitement</Button>
-              <Button variant="outline" className="border-2" onClick={() => navigateToModule('ai-tools','demo')}>Voir la démo</Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Comment ça marche */}
-        <div className="bg-white/80 backdrop-blur-lg border border-gray-100 rounded-2xl p-6 md:p-8 shadow-lg mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div>
-              <h3 className="text-xl md:text-2xl font-bold">Comment ça marche</h3>
-              <p className="text-gray-600 mt-2">Suivez ces étapes simples pour créer un plan personnalisé et progresser efficacement vers votre objectif TOEIC.</p>
-            </div>
-            <div className="flex gap-3">
-              <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-lg px-4 py-2 rounded-md">Commencer</Button>
-              <Button variant="outline" className="border-2">Voir la démo</Button>
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow">
-                <BookOpen className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="font-semibold">1. Définissez votre objectif</div>
-                <div className="text-sm text-gray-600">Indiquez votre score cible et votre disponibilité.</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-white shadow">
-                <Clock className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="font-semibold">2. Suivez un plan intelligent</div>
-                <div className="text-sm text-gray-600">Plan généré par IA + répétition espacée pour maximiser la rétention.</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white shadow">
-                <Zap className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="font-semibold">3. Pratiquez & analysez</div>
-                <div className="text-sm text-gray-600">Quiz adaptatifs, chat IA et analytics pour ajuster votre trajectoire.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Fonctionnalités principales (grid) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {modules.slice(0,6).map((m, idx) => (
-            <Card
-              key={m.id}
-              className="hover:shadow-xl transition-all duration-200 border-0 animate-fade-in-up"
-              style={{ animationDelay: `${idx * 80}ms` }}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${m.gradient} flex items-center justify-center text-white shadow`}>
-                    <m.icon className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold">{m.name}</div>
-                    <div className="text-sm text-gray-600 mt-1">{m.description}</div>
-                    <div className="mt-4 flex items-center gap-3">
-                      <Button onClick={() => navigateToModule(m.id)} className={`bg-gradient-to-r ${m.gradient} text-white px-3 py-1 rounded-md`} size="sm">Voir</Button>
-                      <Button onClick={() => navigateToModule(m.id, 'try')} variant="outline" size="sm">Essayer</Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-      </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-8">
@@ -792,3 +677,4 @@ function App() {
 }
 
 export default App;
+
