@@ -31,7 +31,8 @@ class BackendTester:
         self.test_results = []
         self.user_id = None
         self.card_id = None
-        
+        self.access_token = None
+
     def log_test(self, test_name: str, success: bool, details: str = "", response_data: Any = None):
         """Log test results"""
         status = "✅ PASS" if success else "❌ FAIL"
@@ -159,7 +160,10 @@ class BackendTester:
     def test_spaced_repetition_schedule(self):
         """Test GET /api/spaced-repetition/get-schedule?days_ahead=3"""
         try:
-            response = self.session.get(f"{self.base_url}/api/spaced-repetition/get-schedule?days_ahead=3", timeout=10)
+            headers = {}
+            if self.access_token:
+                headers["Authorization"] = f"Bearer {self.access_token}"
+            response = self.session.get(f"{self.base_url}/api/spaced-repetition/get-schedule?days_ahead=3", timeout=10, headers=headers)
             
             if response.status_code != 200:
                 self.log_test("Spaced Repetition Schedule", False, f"Status code: {response.status_code}", response.text)
@@ -190,10 +194,14 @@ class BackendTester:
                 "content": "Practice identifying main ideas in audio passages"
             }
             
+            headers = {}
+            if self.access_token:
+                headers["Authorization"] = f"Bearer {self.access_token}"
             response = self.session.post(
                 f"{self.base_url}/api/spaced-repetition/create-card",
                 json=card_data,
-                timeout=10
+                timeout=10,
+                headers=headers
             )
             
             if response.status_code not in [200, 201]:
@@ -238,10 +246,14 @@ class BackendTester:
                 "response_time": 12.3
             }
             
+            headers = {}
+            if self.access_token:
+                headers["Authorization"] = f"Bearer {self.access_token}"
             response = self.session.post(
                 f"{self.base_url}/api/spaced-repetition/review-card",
                 json=review_data,
-                timeout=10
+                timeout=10,
+                headers=headers
             )
             
             if response.status_code not in [200, 201]:
@@ -265,51 +277,50 @@ class BackendTester:
             return False
     
     def test_user_registration_and_login(self):
-        """Test POST /api/user/register and POST /api/user/login"""
+        """Test POST /api/user/register and POST /api/user/login (JWT)"""
         try:
             # Generate unique test user
             test_email = f"test.user.{int(time.time())}@euloge.com"
             test_username = f"testuser{int(time.time())}"
-            
-            # Test registration
+            test_password = "TestPassw0rd!"
+
+            # Registration
             register_data = {
                 "username": test_username,
-                "email": test_email
+                "email": test_email,
+                "password": test_password
             }
-            
             response = self.session.post(
                 f"{self.base_url}/api/user/register",
                 json=register_data,
                 timeout=10
             )
-            
             if response.status_code != 201:
                 self.log_test("User Registration", False, f"Status code: {response.status_code}", response.text)
                 return False
-            
             data = response.json()
-            if "user_id" not in data:
-                self.log_test("User Registration", False, "Missing user_id in response", data)
+            if "user" not in data or "access_token" not in data:
+                self.log_test("User Registration", False, "Missing user or access_token in response", data)
                 return False
-            
-            self.user_id = data["user_id"]
-            self.log_test("User Registration", True, f"User registered with ID: {self.user_id}")
-            
-            # Test login
-            login_data = {
-                "email": test_email
-            }
-            
+            self.user_id = data["user"]["id"]
+            self.access_token = data["access_token"]
+            self.log_test("User Registration", True, f"User registered: {self.user_id}")
+
+            # Login
+            login_data = {"email": test_email, "password": test_password}
             response = self.session.post(
                 f"{self.base_url}/api/user/login",
                 json=login_data,
                 timeout=10
             )
-            
             if response.status_code != 200:
                 self.log_test("User Login", False, f"Status code: {response.status_code}", response.text)
                 return False
-            
+            data = response.json()
+            if "access_token" not in data:
+                self.log_test("User Login", False, "Missing access_token in response", data)
+                return False
+            self.access_token = data["access_token"]
             self.log_test("User Login", True, "User logged in successfully")
             return True
             
@@ -380,12 +391,12 @@ class BackendTester:
         
         tests = [
             ("Health Check", self.test_health_endpoint),
+            ("User Registration/Login", self.test_user_registration_and_login),
             ("Mastery Subjects", self.test_mastery_subjects),
             ("Learning Progress", self.test_learning_progress),
             ("Spaced Repetition Schedule", self.test_spaced_repetition_schedule),
             ("Create Card", self.test_create_card),
             ("Review Card", self.test_review_card),
-            ("User Registration/Login", self.test_user_registration_and_login),
             ("Generate Plan", self.test_generate_plan),
         ]
         
