@@ -21,6 +21,8 @@ from flask_cors import CORS
 from datetime import timedelta
 from flask_jwt_extended import JWTManager
 from src.models.user import db, TokenBlocklist
+import logging, json, time
+from flask import request, g
 from src.routes.user import user_bp
 from src.routes.learning import learning_bp
 from src.routes.mastery import mastery_bp
@@ -37,6 +39,28 @@ app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 
 # Configuration CORS pour permettre les requêtes cross-origin
 CORS(app)
+
+# Basic JSON logging
+logging.basicConfig(level=logging.INFO)
+
+@app.before_request
+def _start_timer():
+    g._start_time = time.time()
+
+@app.after_request
+def _log_request(resp):
+    try:
+        duration = time.time() - getattr(g, '_start_time', time.time())
+        log = {
+            'method': request.method,
+            'path': request.path,
+            'status': resp.status_code,
+            'duration_ms': int(duration * 1000),
+        }
+        logging.info(json.dumps(log))
+    except Exception:
+        pass
+    return resp
 
 # Enregistrement des blueprints existants
 app.register_blueprint(user_bp, url_prefix='/api/user')
