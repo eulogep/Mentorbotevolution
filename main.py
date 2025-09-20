@@ -18,7 +18,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
-from src.models.user import db
+from datetime import timedelta
+from flask_jwt_extended import JWTManager
+from src.models.user import db, TokenBlocklist
 from src.routes.user import user_bp
 from src.routes.learning import learning_bp
 from src.routes.mastery import mastery_bp
@@ -26,7 +28,12 @@ from src.routes.analysis import analysis_bp
 from src.routes.spaced_repetition import spaced_repetition_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+# Secrets et JWT
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'please-change-in-production')
+app.config['JWT_SECRET_KEY'] = os.environ.get('SECRET_KEY', app.config['SECRET_KEY'])
+app.config['JWT_TOKEN_LOCATION'] = ['headers']
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 
 # Configuration CORS pour permettre les requêtes cross-origin
 CORS(app)
@@ -55,14 +62,22 @@ if not use_db_uri:
 app.config['SQLALCHEMY_DATABASE_URI'] = use_db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialisation DB (création des tables si nécessaire)
+# Initialisation DB et JWT
+jwt = JWTManager(app)
+
 db.init_app(app)
 with app.app_context():
     try:
         db.create_all()
-    except Exception as e:
-        # En environnement serverless, échouer silencieusement si non nécessaire
+    except Exception:
         pass
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    jti = jwt_payload.get('jti')
+    if not jti:
+        return True
+    return db.session.query(TokenBlocklist.id).filter_by(jti=jti).scalar() is not None
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
@@ -83,4 +98,3 @@ def serve(path):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
