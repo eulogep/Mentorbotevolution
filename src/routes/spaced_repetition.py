@@ -8,6 +8,7 @@ API pour les algorithmes de répétition espacée
 """
 
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
 import math
 import random
@@ -78,6 +79,7 @@ class SpacedRepetitionAlgorithm:
             return last_review + timedelta(days=optimal_days)
 
 @spaced_repetition_bp.route('/create-card', methods=['POST'])
+@jwt_required()
 def create_spaced_repetition_card():
     """Crée une nouvelle carte de répétition espacée"""
     try:
@@ -113,6 +115,7 @@ def create_spaced_repetition_card():
         }), 500
 
 @spaced_repetition_bp.route('/review-card', methods=['POST'])
+@jwt_required()
 def review_card():
     """Traite une révision de carte et calcule le prochain intervalle"""
     try:
@@ -184,6 +187,7 @@ def review_card():
         }), 500
 
 @spaced_repetition_bp.route('/get-due-cards', methods=['GET'])
+@jwt_required()
 def get_due_cards():
     """Récupère les cartes dues pour révision"""
     try:
@@ -225,6 +229,7 @@ def get_due_cards():
         }), 500
 
 @spaced_repetition_bp.route('/get-schedule', methods=['GET'])
+@jwt_required()
 def get_review_schedule():
     """Génère un planning de révision optimisé"""
     try:
@@ -273,6 +278,7 @@ def get_review_schedule():
         }), 500
 
 @spaced_repetition_bp.route('/adaptive-settings', methods=['POST'])
+@jwt_required()
 def update_adaptive_settings():
     """Met à jour les paramètres adaptatifs de l'algorithme"""
     try:
@@ -308,6 +314,7 @@ def update_adaptive_settings():
         }), 500
 
 @spaced_repetition_bp.route('/performance-analytics', methods=['GET'])
+@jwt_required()
 def get_performance_analytics():
     """Fournit des analyses de performance de la répétition espacée"""
     try:
@@ -495,4 +502,3 @@ def generate_insights(analytics):
         insights.append("Taux de rétention exceptionnel ! Votre méthode est très efficace.")
     
     return insights
-
