@@ -208,6 +208,15 @@ Intégration GitHub (recommandée)
 - Sécurité: hasher les mots de passe (ex: argon2/bcrypt) et ajouter une authentification JWT pour sécuriser les endpoints.
 - Observabilité: activer des logs/monitoring sur Vercel. Ajouter une route /health dédiée si nécessaire.
 
+## Perspectives et améliorations futures
+
+Pour rendre cette plateforme plus complète et fiable, plusieurs axes de travail sont nécessaires :
+
+1. **Moteur OCR/NLP réel** : remplacer la simulation actuelle d’analyse de document par l’intégration de Tesseract ou d’une autre solution OCR pour extraire le texte, puis utiliser un framework NLP (spaCy, CamemBERT) pour identifier les concepts et générer des exercices adaptés.
+2. **Authentification sécurisée** : mettre en place une authentification avec JSON Web Tokens (JWT) et hachage de mot de passe (bcrypt ou argon2), afin de sécuriser les endpoints (`/register`, `/login`) et de protéger les données des utilisateurs.
+3. **Persistance et observabilité** : migrer la base de données vers un service persistant (Postgres/Supabase) et configurer un système de logs et de monitoring. Introduire des migrations (Alembic) et améliorer l’API pour tracer les performances.
+4. **Algorithmes de recommandation** : expliciter et implémenter les modèles neuroscientifiques sous‑jacents (courbe de l’oubli, chronotypes) afin de personnaliser la répétition espacée et les plans d’étude.
+
 ## Licence et Auteur
 - Licence: MIT (voir fichier LICENSE)
 - Auteur: MABIALA EULOGE (@eulogep)
