@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
+from src.routes.user import token_required
 
 learning_bp = Blueprint('learning', __name__)
 
 @learning_bp.route('/progress', methods=['GET'])
-def get_progress():
+@token_required
+def get_progress(current_user):
     # Données de progression simulées
     progress_data = {
         'currentScore': 650,
@@ -23,7 +25,8 @@ def get_progress():
     return jsonify(progress_data)
 
 @learning_bp.route('/recommendations', methods=['GET'])
-def get_recommendations():
+@token_required
+def get_recommendations(current_user):
     recommendations = [
         {
             "type": "focus",
@@ -47,4 +50,4 @@ def get_recommendations():
             "color": "from-purple-500 to-indigo-500"
         }
     ]
-    return jsonify(recommendations) 
+    return jsonify(recommendations)
