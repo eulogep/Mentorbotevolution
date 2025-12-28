@@ -8,13 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import MasteryDashboard from './components/MasteryPlan/MasteryDashboard';
 
 function App() {
+  // Optimization: Removed unused currentTime state which was causing re-renders every second
   const [activeModule, setActiveModule] = useState('mastery');
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Données de progression simulées
   const progressData = {
