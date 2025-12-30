@@ -44,13 +44,8 @@ const AnimatedStat = ({ value, suffix = '' }) => {
 };
 
 function App() {
+  // Optimization: Removed unused currentTime state and interval to prevent unnecessary 1Hz re-renders
   const [activeModule, setActiveModule] = useState('mastery');
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Données de progression simulées
   const progressData = {
