@@ -4,7 +4,7 @@ Backend API Testing Suite for Euloge Learning Platform
 ======================================================
 
 Tests the FastAPI gateway mounting the Flask app with all API endpoints.
-Base URL: http://localhost (ingress routes /api -> backend 0.0.0.0:8001)
+Base URL: http://localhost (ingress routes /api -> backend 0.0.0.0:5000)
 
 Test Coverage:
 1. GET /api/health -> FastAPI health check
@@ -25,7 +25,7 @@ import uuid
 import time
 
 class BackendTester:
-    def __init__(self, base_url: str = "http://localhost:8001"):
+    def __init__(self, base_url: str = "http://localhost:5000"):
         self.base_url = base_url
         self.session = requests.Session()
         self.test_results = []
@@ -413,7 +413,7 @@ class BackendTester:
 def main():
     """Main test runner"""
     print("Backend API Testing Suite")
-    print("Base URL: http://localhost:8001")
+    print("Base URL: http://localhost:5000")
     print()
     
     tester = BackendTester()

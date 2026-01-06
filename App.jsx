@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Brain, Target, Users, Zap, BookOpen, BarChart3, Calendar, Settings, Sparkles, TrendingUp, Clock, Award } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
@@ -9,12 +9,6 @@ import MasteryDashboard from './components/MasteryPlan/MasteryDashboard';
 
 function App() {
   const [activeModule, setActiveModule] = useState('mastery');
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Données de progression simulées
   const progressData = {
