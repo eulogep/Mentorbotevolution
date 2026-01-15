@@ -45,12 +45,7 @@ const AnimatedStat = ({ value, suffix = '' }) => {
 
 function App() {
   const [activeModule, setActiveModule] = useState('mastery');
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Bolt: Removed unused state to prevent unnecessary re-renders.
 
   // Données de progression simulées
   const progressData = {
