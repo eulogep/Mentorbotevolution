@@ -2,7 +2,7 @@
  * PlanGenerator Component
  * Connexion backend: /api/analysis/generate-plan (JSON)
  */
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Target, Brain, Calendar, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -10,6 +10,23 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Slider } from '../ui/slider';
 import { Badge } from '../ui/badge';
+
+// Moved outside component to prevent recreation on every render
+const LEARNING_METHODS = {
+  visual: { name: 'Visuel', icon: '👁️', techniques: ['Dual Coding', 'Méthode des Lieux', 'Cartes Conceptuelles'] },
+  auditory: { name: 'Auditif', icon: '👂', techniques: ['Technique Feynman', 'Répétition Orale', 'Podcasts Éducatifs'] },
+  kinesthetic: { name: 'Kinesthésique', icon: '✋', techniques: ['Apprentissage Actif', 'Simulations', 'Exercices Pratiques'] },
+  mixed: { name: 'Mixte', icon: '🧠', techniques: ['Approche Multimodale', 'Rotation des Méthodes', 'Adaptation Contextuelle'] }
+};
+
+// Pure helper functions moved outside
+const convertWeeksToMonths = (weeks) => Math.max(1, Math.round(parseInt(weeks || '12', 10) / 4));
+
+const getDifficultyColor = (difficulty) => {
+  switch (difficulty) { case 1: return 'bg-green-100 text-green-800'; case 2: return 'bg-yellow-100 text-yellow-800'; case 3: return 'bg-red-100 text-red-800'; default: return 'bg-gray-100 text-gray-800'; }
+};
+
+const getDifficultyLabel = (difficulty) => (difficulty===1?'Facile':difficulty===2?'Moyen':difficulty===3?'Difficile':'Inconnu');
 
 const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
   const [targetScore, setTargetScore] = useState([14]);
@@ -20,16 +37,8 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
   const [generatedPlan, setGeneratedPlan] = useState(null);
   const [error, setError] = useState(null);
 
-  const learningMethods = {
-    visual: { name: 'Visuel', icon: '👁️', techniques: ['Dual Coding', 'Méthode des Lieux', 'Cartes Conceptuelles'] },
-    auditory: { name: 'Auditif', icon: '👂', techniques: ['Technique Feynman', 'Répétition Orale', 'Podcasts Éducatifs'] },
-    kinesthetic: { name: 'Kinesthésique', icon: '✋', techniques: ['Apprentissage Actif', 'Simulations', 'Exercices Pratiques'] },
-    mixed: { name: 'Mixte', icon: '🧠', techniques: ['Approche Multimodale', 'Rotation des Méthodes', 'Adaptation Contextuelle'] }
-  };
-
-  const convertWeeksToMonths = (weeks) => Math.max(1, Math.round(parseInt(weeks || '12', 10) / 4));
-
-  const buildConceptsPayload = () => {
+  // Memoize heavy calculation or object creation
+  const conceptsPayload = useMemo(() => {
     if (analyzedDocuments.length > 0) {
       // extraire une liste unique des concepts avec difficulté/importance par défaut
       const setNames = new Set();
@@ -50,9 +59,9 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
       { name: 'Vocabulaire business', difficulty: 'medium', importance: 0.8 },
       { name: 'Compréhension orale', difficulty: 'high', importance: 0.9 },
     ];
-  };
+  }, [analyzedDocuments]);
 
-  const generatePlan = async () => {
+  const generatePlan = useCallback(async () => {
     if (!timeframe || !learningStyle) return;
     setIsGenerating(true);
     setError(null);
@@ -64,7 +73,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
         daily_study_hours: studyTime[0],
         learning_style: learningStyle,
         chronotype: 'intermediate',
-        concepts: buildConceptsPayload()
+        concepts: conceptsPayload
       };
 
       const res = await fetch('/api/analysis/generate-plan', {
@@ -84,7 +93,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
         difficulty: c.difficulty === 'high' ? 3 : c.difficulty === 'medium' ? 2 : 1,
         estimatedTime: c.estimated_hours || 6,
         progress: 0,
-        methods: c.methods || learningMethods[learningStyle]?.techniques || ['Répétition Espacée'],
+        methods: c.methods || LEARNING_METHODS[learningStyle]?.techniques || ['Répétition Espacée'],
         resources: {
           flashcards: Math.max(10, Math.round((c.exercises_count || 20) * 0.4)),
           quizzes: Math.max(3, Math.round((c.exercises_count || 20) * 0.2)),
@@ -111,19 +120,16 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
       };
 
       setGeneratedPlan(uiPlan);
-      onPlanGenerated?.(uiPlan);
+      if (onPlanGenerated) {
+        onPlanGenerated(uiPlan);
+      }
     } catch (e) {
       console.error(e);
       setError(e.message);
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty) { case 1: return 'bg-green-100 text-green-800'; case 2: return 'bg-yellow-100 text-yellow-800'; case 3: return 'bg-red-100 text-red-800'; default: return 'bg-gray-100 text-gray-800'; }
-  };
-  const getDifficultyLabel = (difficulty) => (difficulty===1?'Facile':difficulty===2?'Moyen':difficulty===3?'Difficile':'Inconnu');
+  }, [timeframe, learningStyle, targetScore, studyTime, conceptsPayload, onPlanGenerated]);
 
   return (
     <div className="space-y-6">
@@ -159,7 +165,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
           <div className="space-y-2">
             <Label>Style d'apprentissage préféré</Label>
             <div className="grid grid-cols-2 gap-3">
-              {Object.entries(learningMethods).map(([key, method]) => (
+              {Object.entries(LEARNING_METHODS).map(([key, method]) => (
                 <Card key={key} className={`cursor-pointer transition-all ${learningStyle===key?'ring-2 ring-blue-500 bg-blue-50':'hover:bg-gray-50'}`} onClick={() => setLearningStyle(key)}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2"><span className="text-lg">{method.icon}</span><span className="font-medium">{method.name}</span></div>
