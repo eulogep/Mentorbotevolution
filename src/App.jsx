@@ -10,11 +10,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Brain, Target, Users, Zap, BookOpen, BarChart3, Calendar, Settings, Sparkles, TrendingUp, Clock, Award } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card.jsx';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card.jsx';
 import { Button } from './components/ui/button.jsx';
 import { Progress } from './components/ui/progress.jsx';
 import { Badge } from './components/ui/badge.jsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs.jsx';
 import MasteryDashboard from './components/MasteryPlan/MasteryDashboard.jsx';
 
 // UI polish inspired by reactbits.dev: animated number counter
@@ -45,12 +44,6 @@ const AnimatedStat = ({ value, suffix = '' }) => {
 
 function App() {
   const [activeModule, setActiveModule] = useState('mastery');
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Données de progression simulées
   const progressData = {
