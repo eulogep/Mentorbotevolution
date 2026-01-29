@@ -43,109 +43,106 @@ const AnimatedStat = ({ value, suffix = '' }) => {
   return <span>{v}{suffix}</span>;
 };
 
+// Données de progression simulées (Moved outside component for performance)
+const progressData = {
+  currentScore: 650,
+  targetScore: 800,
+  listening: 340,
+  reading: 310,
+  speaking: 140,
+  writing: 130,
+  streakDays: 12,
+  sessionsToday: 3,
+  totalSessions: 5,
+  nextReview: "2h",
+  weeklyProgress: 29,
+  totalHours: 77,
+  averageStreak: 10
+};
+
+// Recommendations static data (Moved outside component for performance)
+const recommendations = [
+  {
+    type: "focus",
+    title: "Concentrez-vous sur le Reading",
+    description: "Votre score le plus faible. +30 points possibles",
+    priority: "high",
+    icon: Target,
+    color: "from-red-500 to-pink-500"
+  },
+  {
+    type: "timing",
+    title: "Session Deep Work recommandée",
+    description: "Votre pic d'énergie: 14h-16h",
+    priority: "medium",
+    icon: Clock,
+    color: "from-blue-500 to-cyan-500"
+  },
+  {
+    type: "review",
+    title: "Révision espacée optimale",
+    description: "Moment idéal pour réviser le vocabulaire",
+    priority: "medium",
+    icon: Brain,
+    color: "from-purple-500 to-indigo-500"
+  }
+];
+
+// Modules static data (Moved outside component for performance)
+const modules = [
+  {
+    id: 'mastery',
+    name: 'Plans de Maîtrise',
+    description: 'Gestion complète des matières avec IA',
+    icon: BookOpen,
+    gradient: 'from-blue-500 to-blue-600',
+    bgGradient: 'from-blue-50 to-blue-100'
+  },
+  {
+    id: 'neuroscience',
+    name: 'Neurosciences',
+    description: 'Techniques basées sur la science du cerveau',
+    icon: Brain,
+    gradient: 'from-purple-500 to-purple-600',
+    bgGradient: 'from-purple-50 to-purple-100'
+  },
+  {
+    id: 'ai-tools',
+    name: 'Outils IA',
+    description: 'Assistant intelligent et quiz adaptatifs',
+    icon: Zap,
+    gradient: 'from-green-500 to-green-600',
+    bgGradient: 'from-green-50 to-green-100'
+  },
+  {
+    id: 'productivity',
+    name: 'Productivité',
+    description: 'Deep Work et optimisation cognitive',
+    icon: Target,
+    gradient: 'from-orange-500 to-orange-600',
+    bgGradient: 'from-orange-50 to-orange-100'
+  },
+  {
+    id: 'collaboration',
+    name: 'Collaboration',
+    description: 'Groupes d\'étude et mentorat',
+    icon: Users,
+    gradient: 'from-pink-500 to-pink-600',
+    bgGradient: 'from-pink-50 to-pink-100'
+  },
+  {
+    id: 'analytics',
+    name: 'Analytics',
+    description: 'Suivi détaillé et prédictions',
+    icon: BarChart3,
+    gradient: 'from-indigo-500 to-indigo-600',
+    bgGradient: 'from-indigo-50 to-indigo-100'
+  }
+];
+
 function App() {
   const [activeModule, setActiveModule] = useState('mastery');
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Données de progression simulées
-  const progressData = {
-    currentScore: 650,
-    targetScore: 800,
-    listening: 340,
-    reading: 310,
-    speaking: 140,
-    writing: 130,
-    streakDays: 12,
-    sessionsToday: 3,
-    totalSessions: 5,
-    nextReview: "2h",
-    weeklyProgress: 29,
-    totalHours: 77,
-    averageStreak: 10
-  };
-
-  const recommendations = [
-    {
-      type: "focus",
-      title: "Concentrez-vous sur le Reading",
-      description: "Votre score le plus faible. +30 points possibles",
-      priority: "high",
-      icon: Target,
-      color: "from-red-500 to-pink-500"
-    },
-    {
-      type: "timing",
-      title: "Session Deep Work recommandée",
-      description: "Votre pic d'énergie: 14h-16h",
-      priority: "medium",
-      icon: Clock,
-      color: "from-blue-500 to-cyan-500"
-    },
-    {
-      type: "review",
-      title: "Révision espacée optimale",
-      description: "Moment idéal pour réviser le vocabulaire",
-      priority: "medium",
-      icon: Brain,
-      color: "from-purple-500 to-indigo-500"
-    }
-  ];
-
-  const modules = [
-    {
-      id: 'mastery',
-      name: 'Plans de Maîtrise',
-      description: 'Gestion complète des matières avec IA',
-      icon: BookOpen,
-      gradient: 'from-blue-500 to-blue-600',
-      bgGradient: 'from-blue-50 to-blue-100'
-    },
-    {
-      id: 'neuroscience',
-      name: 'Neurosciences',
-      description: 'Techniques basées sur la science du cerveau',
-      icon: Brain,
-      gradient: 'from-purple-500 to-purple-600',
-      bgGradient: 'from-purple-50 to-purple-100'
-    },
-    {
-      id: 'ai-tools',
-      name: 'Outils IA',
-      description: 'Assistant intelligent et quiz adaptatifs',
-      icon: Zap,
-      gradient: 'from-green-500 to-green-600',
-      bgGradient: 'from-green-50 to-green-100'
-    },
-    {
-      id: 'productivity',
-      name: 'Productivité',
-      description: 'Deep Work et optimisation cognitive',
-      icon: Target,
-      gradient: 'from-orange-500 to-orange-600',
-      bgGradient: 'from-orange-50 to-orange-100'
-    },
-    {
-      id: 'collaboration',
-      name: 'Collaboration',
-      description: 'Groupes d\'étude et mentorat',
-      icon: Users,
-      gradient: 'from-pink-500 to-pink-600',
-      bgGradient: 'from-pink-50 to-pink-100'
-    },
-    {
-      id: 'analytics',
-      name: 'Analytics',
-      description: 'Suivi détaillé et prédictions',
-      icon: BarChart3,
-      gradient: 'from-indigo-500 to-indigo-600',
-      bgGradient: 'from-indigo-50 to-indigo-100'
-    }
-  ];
+  // Optimization: Removed unused currentTime state and interval that caused 1s re-renders
 
   const renderModuleContent = () => {
     switch (activeModule) {
@@ -244,7 +241,7 @@ function App() {
             <Card className="border-0 shadow-xl">
               <CardContent className="p-6">
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 mb-6">
-                  <p className="text-gray-700 mb-4 font-medium">💬 Posez votre question à l'IA:</p>
+                  <p className="text-gray-700 mb-4 font-medium">💬 Posez votre question à l&apos;IA:</p>
                   <div className="flex gap-3">
                     <input 
                       type="text" 
@@ -362,7 +359,7 @@ function App() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">Apprentissage Collaboratif</h2>
-                  <p className="text-pink-100">Rejoignez des groupes d'��tude et bénéficiez de mentorat</p>
+                  <p className="text-pink-100">Rejoignez des groupes d&apos;étude et bénéficiez de mentorat</p>
                 </div>
               </div>
             </div>
@@ -469,7 +466,7 @@ function App() {
                     <div className="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                       <span className="text-2xl font-bold text-white">85%</span>
                     </div>
-                    <div className="text-lg font-semibold text-gray-800 mb-1">Probabilité d'atteindre 800</div>
+                    <div className="text-lg font-semibold text-gray-800 mb-1">Probabilité d&apos;atteindre 800</div>
                     <div className="text-sm text-gray-600">Estimation: 15 Sept 2024</div>
                     <Badge className="mt-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                       Très probable
@@ -545,7 +542,7 @@ function App() {
           <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-green-400/20 blur-3xl" />
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
-              <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight">Préparez le TOEIC avec l'IA</h2>
+              <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight">Préparez le TOEIC avec l&apos;IA</h2>
               <p className="mt-2 text-gray-600">Plans intelligents, répétition espacée, et analytics pour atteindre 800+.</p>
             </div>
             <div className="flex items-center gap-3">
@@ -770,7 +767,7 @@ function App() {
             <div className="mb-4 md:mb-0">
               <h3 className="text-lg font-bold mb-2">Euloge Learning Platform</h3>
               <p className="text-gray-300 text-sm">
-                Plateforme d'apprentissage moderne basée sur l'IA et les neurosciences
+                Plateforme d&apos;apprentissage moderne basée sur l&apos;IA et les neurosciences
               </p>
             </div>
             <div className="text-center md:text-right">
