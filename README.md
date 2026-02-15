@@ -1,156 +1,140 @@
-# Euloge Learning Platform – Plateforme d'apprentissage IA
+<div align="center">
 
-Plateforme moderne d'apprentissage adaptatif, optimisée pour la préparation au TOEIC par des principes neuroscientifiques.
-Frontend React (Vite + Tailwind + Radix UI) et backend Python (Flask + SQLAlchemy), sécurisés et augmentés par l'IA.
+# 🧠 MentorBot Evolution
 
-## Sommaire
+### Plateforme d'Apprentissage Augmentée par l'IA
 
-- [Présentation](#présentation)
-- [Fonctionnalités clés](#fonctionnalités-clés)
-- [Stack technique](#stack-technique)
-- [Structure du projet](#structure-du-projet)
-- [Prérequis](#prérequis)
-- [Installation et démarrage local](#installation-et-démarrage-local)
-- [Configuration](#configuration)
-- [API](#api)
-- [Déploiement](#déploiement)
-- [Licence](#licence)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-2.3+-000000?style=for-the-badge&logo=flask&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-4.4+-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.3+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
+
+<p align="center">
+  Une approche <b>neuroscientifique</b> de la préparation au TOEIC.<br>
+  Analyse de documents par OCR, Plans d'études adaptatifs et Répétition Espacée.
+</p>
+
+[Fonctionnalités](#-fonctionnalités-clés) •
+[Installation](#-installation) •
+[API](#-api) •
+[Contribuer](#-contribuer)
+
+</div>
 
 ---
 
-## Présentation
+## 🚀 Présentation
 
-Cette application propose une approche personnalisée de l'apprentissage :
+**MentorBot Evolution** n'est pas juste une autre application de quiz. C'est un **coach personnel intelligent** qui s'adapte à votre façon d'apprendre.
 
-- **Tableau de bord de maîtrise** : Suivi détaillé par compétence.
-- **Plans adaptatifs** : Générés par IA selon votre profil et vos objectifs.
-- **Répétition espacée** : Algorithme SM-2 optimisé pour la rétention long terme.
-- **Analyse de documents (OCR/NLP)** : Extraction automatique de concepts à partir de vos cours (PDF, Images, Texte) pour générer des exercices.
+En combinant la puissance de l'IA (**OCR Tesseract, NLP**) avec les principes de la **courbe de l'oubli (Ebbinghaus)**, la plateforme optimise chaque minute de votre temps de révision pour maximiser la rétention à long terme.
 
-## Fonctionnalités clés
+## ✨ Fonctionnalités Clés
 
-- **Authentification Sécurisée** : Inscription/Connexion avec JWT et hachage de mots de passe.
-- **OCR & NLP Réels** : Utilisation de Tesseract et Regex/NLP pour analyser le contenu réel des documents uploadés.
-- **Visualisation de progression** : Graphiques interactifs de vos performances.
-- **Recommandations dynamiques** : Basées sur votre chronotype et votre style d'apprentissage.
+| Fonctionnalité | Description | Technologie |
+| :--- | :--- | :--- |
+| **🔐 Auth Sécurisée** | Inscription/Connexion robuste avec JWT et hachage. | `Flask-JWT`, `Werkzeug` |
+| **👁️ Analyse Documents** | Extraction de texte et concepts depuis PDF/Images/Texte. | `Tesseract OCR`, `Regex/NLP` |
+| **📊 Dashboard** | Suivi visuel de la progression et des métriques d'étude. | `Recharts`, `Radix UI` |
+| **🧠 Apprentissage Adaptatif** | Plans générés selon votre chronotype et style d'apprentissage. | `Algorithme SM-2` |
+| **🔁 Répétition Espacée** | Système de flashcards intelligent qui prédit quand réviser. | `Python Backend` |
 
-## Stack technique
+## 🛠️ Stack Technique
 
-- **Frontend** : React 18, Vite, TailwindCSS, Axios, Recharts, Lucide Icons.
-- **Backend** : Python 3.11+, Flask 2.3+, Flask-JWT-Extended, Flask-SQLAlchemy.
-- **IA/Data** : Pytesseract (OCR), Pillow, Scikit-learn (simulé/futur), Spacy/Regex (NLP).
-- **Base de données** : SQLite (Dev) / PostgreSQL (Prod).
+**Frontend**
 
-## Structure du projet
+- **Framework**: React 18 + Vite
+- **UI/UX**: TailwindCSS, Shadcn/Radix UI, Lucide Icons
+- **State**: Context API (Auth), Axios (API)
 
-```text
-mentorbotevolution-main/
-├─ src/                       # Frontend React
-│  ├─ components/             # Composants UI (MasteryPlan, etc.)
-│  ├─ context/                # Gestion d'état (AuthContext)
-│  ├─ routes/                 # Pages (Login, Register, Dashboard)
-│  ├─ models/                 # Modèles de données frontend
-│  ├─ utils/                  # Utilitaires frontend
-│  ├─ App.jsx, main.jsx       # Entrée React
-├─ backend/                   # (Dossier optionnel, code à la racine pour Vercel)
-├─ src/routes/                # Blueprints Backend (API endpoints)
-├─ src/models/                # Modèles SQLAlchemy (User, etc.)
-├─ src/utils/                 # Utilitaires Backend (OCR, NLP)
-├─ main.py                    # Point d'entrée Flask
-├─ requirements.txt           # Dépendances Python
-├─ package.json               # Dépendances Node
-├─ .env                       # Secrets (non versionné)
-└─ README.md                  # Documentation
-```
+**Backend**
 
-## Prérequis
+- **Core**: Python 3.11, Flask
+- **Sécurité**: JWT-Extended, Werkzeug Security
+- **Data**: SQLAlchemy (ORM), SQLite (Dev) / PostgreSQL (Prod)
+- **AI**: Pytesseract, Pillow
 
-1. **Node.js** (v18+) et **npm**.
-2. **Python** (v3.10+).
-3. **Tesseract-OCR** : Doit être installé sur votre machine pour l'analyse d'images.
-    - *Windows* : [Installeur UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) (Ajouter au PATH).
-    - *Linux* : `sudo apt-get install tesseract-ocr`.
-    - *Mac* : `brew install tesseract`.
-
-## Installation et démarrage local
-
-### 1. Backend (Flask)
+## 📂 Structure du Projet
 
 ```bash
-# Créer un environnement virtuel (recommandé)
-python -m venv venv
-# Windows: venv\Scripts\activate
-# Linux/Mac: source venv/bin/activate
-
-# Installer les dépendances
-pip install -r requirements.txt
+mentorbotevolution-main/
+├── 📂 src/                  # ⚛️ Frontend React
+│   ├── 🧩 components/       # Composants UI modulaires
+│   ├── 🔐 context/          # Gestion d'état (Auth)
+│   ├── 🚦 routes/           # Pages (Login, Dashboard...)
+│   └── 🛠️ utils/            # Helpers
+├── 📂 src/routes/           # 🐍 Blueprints Backend API
+├── 📂 src/models/           # 🗄️ Modèles de BDD
+├── 📂 src/utils/            # 🧠 Modules IA (OCR, NLP)
+├── 📄 main.py               # Point d'entrée Flask
+├── 📄 package.json          # Dépendances Node
+└── 📄 requirements.txt      # Dépendances Python
 ```
 
-### 2. Frontend (React)
+## ⚡ Installation Rapide
+
+### Prérequis
+
+- Node.js (v18+)
+- Python (v3.10+)
+- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) (Installé et dans le PATH)
+
+### 1. Clonage & Setup
+
+```bash
+git clone https://github.com/eulogep/mentorbotevolution.git
+cd mentorbotevolution
+```
+
+### 2. Backend (Terminal A)
+
+```bash
+# Setup environnement virtuel
+python -m venv venv
+# Windows: venv\Scripts\activate  |  Mac/Linux: source venv/bin/activate
+
+# Installation deps
+pip install -r requirements.txt
+
+# Création fichier .env
+echo "SECRET_KEY=dev-secret" > .env
+echo "JWT_SECRET_KEY=dev-jwt-secret" >> .env
+echo "DATABASE_URL=sqlite:///app.db" >> .env
+
+# Lancement
+python main.py
+```
+
+### 3. Frontend (Terminal B)
 
 ```bash
 npm install
-```
-
-### 3. Configuration (.env)
-
-Créez un fichier `.env` à la racine :
-
-```ini
-SECRET_KEY=votre_cle_secrete_super_securisee
-JWT_SECRET_KEY=votre_cle_jwt_secrete
-DATABASE_URL=sqlite:///app.db
-# Tesseract path si non détecté automatiquement (optionnel)
-# TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
-```
-
-### 4. Lancement
-
-**Terminal 1 (Backend)** :
-
-```bash
-python main.py
-# Serveur sur http://localhost:5000
-```
-
-**Terminal 2 (Frontend)** :
-
-```bash
 npm run dev
-# Application sur http://localhost:3000
 ```
 
-## Configuration
+🚀 **Ouvrez** `http://localhost:3000` pour commencer !
 
-### Variables d'environnement
+## 🔌 API Endpoints
 
-- `SECRET_KEY` : Sécurisation des sessions Flask.
-- `JWT_SECRET_KEY` : Signature des tokens d'authentification.
-- `DATABASE_URL` : Connexion BDD (ex: `postgresql://user:pass@host/db`).
+L'API est accessible via `/api`. Les endpoints protégés nécessitent un header `Authorization: Bearer <token>`.
 
-## API
+- **Auth**: `POST /auth/register`, `POST /auth/login`
+- **Analysis**: `POST /analysis/analyze-document` (Multipart File)
+- **Mastery**: `GET /mastery/subjects`
+- **Spaced Repetition**: `GET /spaced-repetition/get-due-cards`
 
-L'API est préfixée par `/api`.
+## 🌍 Déploiement
 
-- **Auth**
-  - `POST /api/user/register` : Créer un compte.
-  - `POST /api/user/login` : Se connecter (retourne Access Token).
+Le projet est "Vercel-Ready".
 
-- **Analysis**
-  - `POST /api/analysis/analyze-document` : Upload document -> Extraction Concepts.
-  - `POST /api/analysis/generate-plan` : Création de plan (Protégé JWT).
+1. Forkez le repo.
+2. Importez le projet sur Vercel.
+3. Configurez les variables d'environnement.
+4. Déployez ! 🚀
 
-- **Mastery & Spaced Repetition**
-  - Endpoints pour la gestion des sujets et des révisions.
-
-## Déploiement
-
-Le projet est configuré pour **Vercel** (Frontend + Backend Serverless).
-
-- `vercel.json` inclus à la racine.
-- Nécessite une base de données externe (ex: Supabase, Neon) pour la production, car SQLite est éphémère sur Vercel.
-
-## Licence
-
-MIT License.
-Auteur: MABIALA EULOGE (@eulogep)
+---
+<div align="center">
+  <p>Fait avec ❤️ par <a href="https://github.com/eulogep">MABIALA EULOGE</a></p>
+</div>
