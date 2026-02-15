@@ -1,4 +1,6 @@
-Flask==2.3.3
-Flask-CORS==4.0.0
-Flask-SQLAlchemy==3.0.5
-Werkzeug==2.3.7 
+pytesseract
+spacy
+Pillow
+flask-jwt-extended==4.5.2
+python-dotenv
+requests

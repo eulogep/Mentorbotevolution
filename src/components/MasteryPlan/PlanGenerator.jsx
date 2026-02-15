@@ -3,6 +3,7 @@
  * Connexion backend: /api/analysis/generate-plan (JSON)
  */
 import React, { useState } from 'react';
+import axios from 'axios';
 import { Target, Brain, Calendar, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -67,14 +68,9 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
         concepts: buildConceptsPayload()
       };
 
-      const res = await fetch('/api/analysis/generate-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const res = await axios.post('/api/analysis/generate-plan', payload);
 
-      if (!res.ok) throw new Error(`Génération échouée (${res.status})`);
-      const data = await res.json();
+      const data = res.data;
       if (data.status !== 'success') throw new Error(data.message || 'Erreur génération');
 
       const plan = data.plan;
@@ -90,7 +86,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
           quizzes: Math.max(3, Math.round((c.exercises_count || 20) * 0.2)),
           exercises: Math.max(5, Math.round((c.exercises_count || 20) * 0.4))
         },
-        schedule: { startWeek: 1, endWeek: 4, sessionsPerWeek: 3, reviewSessions: [5,7,11] }
+        schedule: { startWeek: 1, endWeek: 4, sessionsPerWeek: 3, reviewSessions: [5, 7, 11] }
       }));
 
       const uiPlan = {
@@ -101,9 +97,9 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
         dailyStudyTime: studyTime[0],
         concepts: conceptsPlan,
         milestones: (plan.milestones || []).map((m, i) => ({
-          week: (m.month || i+1) * 4,
-          targetScore: Math.round((payload.target_score/4) * (i+1)),
-          description: m.key_objectives?.[0] || `Évaluation intermédiaire ${(i+1)}`,
+          week: (m.month || i + 1) * 4,
+          targetScore: Math.round((payload.target_score / 4) * (i + 1)),
+          description: m.key_objectives?.[0] || `Évaluation intermédiaire ${(i + 1)}`,
           concepts: m.target_concepts || 3
         })),
         totalEstimatedTime: plan.total_estimated_hours || conceptsPlan.length * 8,
@@ -123,13 +119,13 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) { case 1: return 'bg-green-100 text-green-800'; case 2: return 'bg-yellow-100 text-yellow-800'; case 3: return 'bg-red-100 text-red-800'; default: return 'bg-gray-100 text-gray-800'; }
   };
-  const getDifficultyLabel = (difficulty) => (difficulty===1?'Facile':difficulty===2?'Moyen':difficulty===3?'Difficile':'Inconnu');
+  const getDifficultyLabel = (difficulty) => (difficulty === 1 ? 'Facile' : difficulty === 2 ? 'Moyen' : difficulty === 3 ? 'Difficile' : 'Inconnu');
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5"/>Générateur de Plan de Maîtrise</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Générateur de Plan de Maîtrise</CardTitle>
           <CardDescription>Définissez vos objectifs pour générer un plan d'apprentissage personnalisé et adaptatif</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -137,7 +133,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
           <div className="space-y-2">
             <Label className="text-base font-medium">Objectif de note</Label>
             <div className="px-4">
-              <Slider value={targetScore} onValueChange={setTargetScore} max={20} min={10} step={0.5} className="w-full"/>
+              <Slider value={targetScore} onValueChange={setTargetScore} max={20} min={10} step={0.5} className="w-full" />
               <div className="flex justify-between text-sm text-gray-500 mt-1"><span>10/20</span><span className="font-medium text-blue-600">{targetScore[0]}/20</span><span>20/20</span></div>
             </div>
           </div>
@@ -145,7 +141,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
           <div className="space-y-2">
             <Label htmlFor="timeframe">Délai souhaité</Label>
             <Select value={timeframe} onValueChange={setTimeframe}>
-              <SelectTrigger><SelectValue placeholder="Sélectionnez une durée"/></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Sélectionnez une durée" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="4">4 semaines (intensif)</SelectItem>
                 <SelectItem value="8">8 semaines (accéléré)</SelectItem>
@@ -160,7 +156,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
             <Label>Style d'apprentissage préféré</Label>
             <div className="grid grid-cols-2 gap-3">
               {Object.entries(learningMethods).map(([key, method]) => (
-                <Card key={key} className={`cursor-pointer transition-all ${learningStyle===key?'ring-2 ring-blue-500 bg-blue-50':'hover:bg-gray-50'}`} onClick={() => setLearningStyle(key)}>
+                <Card key={key} className={`cursor-pointer transition-all ${learningStyle === key ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`} onClick={() => setLearningStyle(key)}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2"><span className="text-lg">{method.icon}</span><span className="font-medium">{method.name}</span></div>
                     <p className="text-xs text-gray-600">{method.techniques.join(', ')}</p>
@@ -173,12 +169,12 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
           <div className="space-y-2">
             <Label className="text-base font-medium">Temps d'étude quotidien</Label>
             <div className="px-4">
-              <Slider value={studyTime} onValueChange={setStudyTime} max={6} min={0.5} step={0.5} className="w-full"/>
+              <Slider value={studyTime} onValueChange={setStudyTime} max={6} min={0.5} step={0.5} className="w-full" />
               <div className="flex justify-between text-sm text-gray-500 mt-1"><span>30min</span><span className="font-medium text-blue-600">{studyTime[0]}h/jour</span><span>6h</span></div>
             </div>
           </div>
           <Button onClick={generatePlan} disabled={!timeframe || !learningStyle || isGenerating} className="w-full">
-            {isGenerating ? (<><Brain className="h-4 w-4 mr-2 animate-pulse"/>Génération du plan en cours...</>) : (<><Target className="h-4 w-4 mr-2"/>Générer le Plan de Maîtrise</>)}
+            {isGenerating ? (<><Brain className="h-4 w-4 mr-2 animate-pulse" />Génération du plan en cours...</>) : (<><Target className="h-4 w-4 mr-2" />Générer le Plan de Maîtrise</>)}
           </Button>
           {error && <p className="text-sm text-red-600">Erreur: {error}</p>}
         </CardContent>
@@ -187,7 +183,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
       {generatedPlan && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500"/>Plan de Maîtrise Généré</CardTitle>
+            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" />Plan de Maîtrise Généré</CardTitle>
             <CardDescription>Votre parcours personnalisé pour atteindre {generatedPlan.targetScore}/20</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -236,7 +232,7 @@ const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
                 ))}
               </div>
             </div>
-            <Button className="w-full" size="lg"><Calendar className="h-4 w-4 mr-2"/>Commencer le Plan de Maîtrise</Button>
+            <Button className="w-full" size="lg"><Calendar className="h-4 w-4 mr-2" />Commencer le Plan de Maîtrise</Button>
           </CardContent>
         </Card>
       )}

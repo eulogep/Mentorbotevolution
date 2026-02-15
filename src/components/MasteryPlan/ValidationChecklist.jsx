@@ -4,6 +4,7 @@
  * Ajout: POST /api/analysis/update-progress à la validation
  */
 import React, { useState } from 'react';
+import axios from 'axios';
 import { CheckCircle2, Circle, Star, Trophy, Brain, Target, MessageSquare, Users, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -88,13 +89,8 @@ const ValidationChecklist = ({ concept = { id: 'concept_ui', name: 'Concept' }, 
     try {
       setSaving(true); setError(null); setServerMsg(null);
       const payload = computePayload();
-      const res = await fetch('/api/analysis/update-progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(`Erreur serveur (${res.status})`);
-      const data = await res.json();
+      const res = await axios.post('/api/analysis/update-progress', payload);
+      const data = res.data;
       if (data.status !== 'success') throw new Error(data.message || 'Mise à jour échouée');
       setServerMsg(`Prochaine révision: ${new Date(data.updated_concept.next_review).toLocaleString()}`);
     } catch (e) {
@@ -225,7 +221,7 @@ const ValidationChecklist = ({ concept = { id: 'concept_ui', name: 'Concept' }, 
               <Badge className={canValidate() ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>{canValidate() ? 'Prêt à valider' : 'En cours'}</Badge>
             </div>
             <Button onClick={validateConcept} disabled={!canValidate() || saving} className="w-full" size="lg">
-              {saving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Sauvegarde...</>) : (<><Trophy className="h-4 w-4 mr-2"/>Valider la Maîtrise du Concept</>)}
+              {saving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sauvegarde...</>) : (<><Trophy className="h-4 w-4 mr-2" />Valider la Maîtrise du Concept</>)}
             </Button>
           </div>
         </CardContent>

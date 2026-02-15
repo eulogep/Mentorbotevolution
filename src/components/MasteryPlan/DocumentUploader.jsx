@@ -3,6 +3,7 @@
  * Connexion backend: /api/analysis/analyze-document (multipart/form-data)
  */
 import React, { useState, useCallback } from 'react';
+import axios from 'axios';
 import { Upload, FileText, Image, File, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -44,9 +45,9 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
 
   const handleFiles = (files) => {
     const fileArray = Array.from(files);
-    const validTypes = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain','image/jpeg','image/png'];
+    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/jpeg', 'image/png'];
     const newFiles = fileArray
-      .filter(file => validTypes.includes(file.type) && file.size <= 10*1024*1024)
+      .filter(file => validTypes.includes(file.type) && file.size <= 10 * 1024 * 1024)
       .map(file => ({
         id: Date.now() + Math.random(),
         file,
@@ -68,9 +69,9 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
-    const k = 1024; const sizes = ['Bytes','KB','MB','GB'];
-    const i = Math.floor(Math.log(bytes)/Math.log(k));
-    return parseFloat((bytes/Math.pow(k,i)).toFixed(2)) + ' ' + sizes[i];
+    const k = 1024; const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const analyzeDocuments = async () => {
@@ -89,13 +90,9 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
         const form = new FormData();
         form.append('file', item.file, item.name);
 
-        const res = await fetch('/api/analysis/analyze-document', {
-          method: 'POST',
-          body: form
-        });
+        const res = await axios.post('/api/analysis/analyze-document', form);
 
-        if (!res.ok) throw new Error(`Analyse échouée (${res.status})`);
-        const data = await res.json();
+        const data = res.data;
         if (data.status !== 'success') throw new Error(data.message || 'Erreur analyse');
 
         const concepts = (data.analysis?.concepts || []).map(c => c.name);
@@ -114,7 +111,7 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
         });
 
         // mettre à jour affichage incrémental
-        setUploadedFiles(prev => prev.map(f => f.id === item.id ? { ...analyzed[analyzed.length-1] } : f));
+        setUploadedFiles(prev => prev.map(f => f.id === item.id ? { ...analyzed[analyzed.length - 1] } : f));
       }
 
       setAnalysisProgress(100);
@@ -145,9 +142,8 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
         </CardHeader>
         <CardContent>
           <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-            }`}
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}

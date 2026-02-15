@@ -16,6 +16,7 @@ import { Progress } from './components/ui/progress.jsx';
 import { Badge } from './components/ui/badge.jsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs.jsx';
 import MasteryDashboard from './components/MasteryPlan/MasteryDashboard.jsx';
+import { useAuth } from './context/AuthContext';
 
 // UI polish inspired by reactbits.dev: animated number counter
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
@@ -46,6 +47,7 @@ const AnimatedStat = ({ value, suffix = '' }) => {
 function App() {
   const [activeModule, setActiveModule] = useState('mastery');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -151,7 +153,7 @@ function App() {
     switch (activeModule) {
       case 'mastery':
         return <MasteryDashboard />;
-      
+
       case 'neuroscience':
         return (
           <div className="space-y-6">
@@ -246,8 +248,8 @@ function App() {
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 mb-6">
                   <p className="text-gray-700 mb-4 font-medium">💬 Posez votre question à l'IA:</p>
                   <div className="flex gap-3">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="Ex: Quelle est la différence entre 'will' et 'going to'?"
                       className="flex-1 p-3 border-0 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-green-500 transition-all"
                     />
@@ -524,15 +526,12 @@ function App() {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <div className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Score actuel: <AnimatedStat value={progressData.currentScore} />
+                  {user?.email || 'Utilisateur'}
                 </div>
-                <div className="text-xs text-gray-500">Objectif: {progressData.targetScore}</div>
+                <div className="text-xs text-gray-500">Score: <AnimatedStat value={progressData.currentScore} /></div>
               </div>
-              <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-sm" size="sm">
-                Commencer
-              </Button>
-              <Button variant="outline" size="sm" className="hover:shadow-lg transition-all duration-200">
-                <Settings className="h-4 w-4" />
+              <Button onClick={() => logout()} variant="outline" size="sm" className="hover:text-red-600 hover:border-red-200 transition-all duration-200">
+                Déconnexion
               </Button>
             </div>
           </div>
@@ -550,7 +549,7 @@ function App() {
             </div>
             <div className="flex items-center gap-3">
               <Button className="bg-green-600 hover:bg-green-600/90 text-white shadow-lg px-5 py-2 rounded-md">Commencer gratuitement</Button>
-              <Button variant="outline" className="border-2" onClick={() => navigateToModule('ai-tools','demo')}>Voir la démo</Button>
+              <Button variant="outline" className="border-2" onClick={() => navigateToModule('ai-tools', 'demo')}>Voir la démo</Button>
             </div>
           </div>
         </div>
@@ -605,7 +604,7 @@ function App() {
 
         {/* Fonctionnalités principales (grid) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {modules.slice(0,6).map((m, idx) => (
+          {modules.slice(0, 6).map((m, idx) => (
             <Card
               key={m.id}
               className="hover:shadow-xl transition-all duration-200 border-0 animate-fade-in-up"
@@ -652,17 +651,15 @@ function App() {
                       <button
                         key={module.id}
                         onClick={() => setActiveModule(module.id)}
-                        className={`w-full flex items-center gap-4 px-4 py-4 text-left rounded-xl transition-all duration-200 group ${
-                          isActive 
-                            ? `bg-gradient-to-r ${module.gradient} text-white shadow-lg transform scale-105` 
-                            : 'hover:bg-gray-50 hover:shadow-md hover:transform hover:scale-102'
-                        }`}
+                        className={`w-full flex items-center gap-4 px-4 py-4 text-left rounded-xl transition-all duration-200 group ${isActive
+                          ? `bg-gradient-to-r ${module.gradient} text-white shadow-lg transform scale-105`
+                          : 'hover:bg-gray-50 hover:shadow-md hover:transform hover:scale-102'
+                          }`}
                       >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                          isActive 
-                            ? 'bg-white/20 backdrop-blur-sm' 
-                            : `bg-gradient-to-r ${module.gradient} group-hover:shadow-lg`
-                        }`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${isActive
+                          ? 'bg-white/20 backdrop-blur-sm'
+                          : `bg-gradient-to-r ${module.gradient} group-hover:shadow-lg`
+                          }`}>
                           <IconComponent className={`h-5 w-5 ${isActive ? 'text-white' : 'text-white'}`} />
                         </div>
                         <div>
@@ -697,8 +694,8 @@ function App() {
                         {Math.round(((progressData.currentScore - 400) / (progressData.targetScore - 400)) * 100)}%
                       </span>
                     </div>
-                    <Progress 
-                      value={((progressData.currentScore - 400) / (progressData.targetScore - 400)) * 100} 
+                    <Progress
+                      value={((progressData.currentScore - 400) / (progressData.targetScore - 400)) * 100}
                       className="h-3 bg-gray-200"
                     />
                   </div>
@@ -762,7 +759,7 @@ function App() {
           </div>
         </div>
       </div>
-      
+
       {/* Footer avec attribution */}
       <footer className="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-6 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
