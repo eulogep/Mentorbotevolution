@@ -10,6 +10,7 @@
 ![Vite](https://img.shields.io/badge/Vite-4.4+-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.3+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
+[![Vercel Deployment](https://deploy-badge.vercel.app/vercel/mentorbotevolution)](https://mentorbotevolution.vercel.app)
 
 <p align="center">
   Une approche <b>neuroscientifique</b> de la préparation au TOEIC.<br>
@@ -19,7 +20,8 @@
 [Fonctionnalités](#-fonctionnalités-clés) •
 [Installation](#-installation) •
 [API](#-api) •
-[Contribuer](#-contribuer)
+[Contribuer](#-contribuer) •
+[Démo Live 🚀](https://mentorbotevolution.vercel.app)
 
 </div>
 
@@ -127,12 +129,10 @@ L'API est accessible via `/api`. Les endpoints protégés nécessitent un header
 
 ## 🌍 Déploiement
 
-Le projet est "Vercel-Ready".
+Le projet est déployé en production sur Vercel.
 
-1. Forkez le repo.
-2. Importez le projet sur Vercel.
-3. Configurez les variables d'environnement.
-4. Déployez ! 🚀
+- **URL de Production** : [https://mentorbotevolution.vercel.app](https://mentorbotevolution.vercel.app)
+- **Statut** : ✅ En ligne
 
 ---
 <div align="center">
