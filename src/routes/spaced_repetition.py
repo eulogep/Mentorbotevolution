@@ -372,3 +372,99 @@ def import_pipeline_cards():
 
     except Exception as e:
         return jsonify({"status": "error", "message": f"Erreur serveur : {str(e)}"}), 500
+
+
+@spaced_repetition_bp.route('/review-cards', methods=['GET'])
+@jwt_required()
+def get_review_cards():
+    """Récupère les cartes à réviser (dues) pour l'utilisateur connecté."""
+    try:
+        user_id = int(get_jwt_identity())
+        now = datetime.utcnow()
+
+        # Cartes dues : next_review <= now
+        due_cards = (
+            Card.query
+            .filter(Card.user_id == user_id, Card.next_review <= now)
+            .order_by(Card.next_review.asc())
+            .all()
+        )
+
+        # Si aucune carte n'est due, on retourne les cartes les plus récentes pour la démo
+        if not due_cards:
+            due_cards = (
+                Card.query
+                .filter(Card.user_id == user_id)
+                .order_by(Card.created_at.desc())
+                .limit(10)
+                .all()
+            )
+
+        cards_data = [c.to_dict() for c in due_cards]
+
+        return jsonify({
+            'status': 'success',
+            'cards': cards_data,
+            'count': len(cards_data)
+        }), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Erreur serveur : {str(e)}"}), 500
+
+
+@spaced_repetition_bp.route('/review-cards/<int:card_id>/answer', methods=['POST'])
+@jwt_required()
+def submit_card_answer(card_id):
+    """Enregistre le score/qualité d'une révision et met à jour l'intervalle SM-2."""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+
+        quality = data.get('quality')
+        if quality is None or not isinstance(quality, int) or not (0 <= quality <= 5):
+            return jsonify({"status": "error", "message": "Le champ 'quality' doit être un entier entre 0 et 5."}), 400
+
+        card = Card.query.filter_by(id=card_id, user_id=user_id).first()
+        if not card:
+            return jsonify({"status": "error", "message": "Carte introuvable."}), 404
+
+        # Calcul SM-2
+        algo = SpacedRepetitionAlgorithm()
+        new_interval, new_easiness = algo.calculate_next_interval(
+            card.interval, card.easiness_factor, quality
+        )
+
+        # Mise à jour des compteurs et de la planification
+        card.interval = new_interval
+        card.easiness_factor = new_easiness
+        card.review_count += 1
+        if quality >= 3:
+            card.success_count += 1
+        card.last_reviewed = datetime.utcnow()
+        card.next_review = datetime.utcnow() + timedelta(days=new_interval)
+
+        # Enregistrement d'une StudySession si cohérent
+        study_session = StudySession(
+            user_id=user_id,
+            subject_id=card.subject_id,
+            session_type="review",
+            cards_reviewed=1,
+            cards_correct=1 if quality >= 3 else 0,
+            duration_minutes=0.1,
+            started_at=datetime.utcnow() - timedelta(seconds=6),
+            ended_at=datetime.utcnow()
+        )
+        db.session.add(study_session)
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'card_id': card.id,
+            'quality': quality,
+            'next_review': card.next_review.isoformat(),
+            'message': 'Réponse enregistrée avec succès'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Erreur serveur : {str(e)}"}), 500
