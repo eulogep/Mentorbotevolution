@@ -39,3 +39,20 @@ Pour éviter de casser le projet en production ou en local, gardez à l'esprit c
 ## 📝 Qualité du Code
 - **Typage dynamique** : Soyez vigilant sur le typage des entrées de l'API (par exemple, normaliser les chaînes `"high"` / `"medium"` reçues en valeurs numériques `float` pour les calculs de seuil).
 - **Gestion des transactions** : Toujours utiliser `db.session.rollback()` dans les blocs `except` de vos routes Flask pour éviter de bloquer la base de données SQLite en cas d'erreur.
+
+---
+
+## 🚀 Skill-First Prompt Directive
+
+Tout prompt de travail pour les futures sessions d'agents doit inclure la consigne suivante :
+
+```text
+Before implementation:
+- check local skills
+- use find-skills only if needed
+- select maximum 1–3 relevant skills
+- document selected skills in docs/SKILLS.md
+- do not install broad skill packs
+- do not expand the task scope
+```
+
