@@ -24,6 +24,10 @@ def _decode_text_upload(file_storage):
     return _read_upload_bytes(file_storage).decode("utf-8", errors="ignore").strip()
 
 
+def _is_ocr_failure_text(text):
+    return text.startswith("[OCR Failed:") or text.startswith("[OCR unavailable:")
+
+
 def extract_text_from_pdf(file_storage, max_ocr_pages=3):
     """Extract embedded PDF text with PyMuPDF, then OCR scanned pages as fallback."""
     data = _read_upload_bytes(file_storage)
@@ -81,7 +85,7 @@ def extract_text_from_pdf(file_storage, max_ocr_pages=3):
         return DocumentExtractionResult(
             text="",
             method="pdf_error",
-            fallback_reason=str(exc),
+            fallback_reason="PDF text extraction failed",
         )
 
 
@@ -91,8 +95,16 @@ def extract_text_from_document(file_storage):
     extension = os.path.splitext(filename.lower())[1]
 
     if content_type.startswith("image/"):
+        ocr_text = extract_text_from_image(file_storage).strip()
+        if _is_ocr_failure_text(ocr_text):
+            return DocumentExtractionResult(
+                text="",
+                method="image_ocr_failed",
+                fallback_reason="Image OCR failed",
+            )
+
         return DocumentExtractionResult(
-            text=extract_text_from_image(file_storage).strip(),
+            text=ocr_text,
             method="image_ocr",
         )
 
