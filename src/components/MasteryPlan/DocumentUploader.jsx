@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
 import { Alert, AlertDescription } from '../ui/alert';
+import LearningPipelineDisplay from './LearningPipelineDisplay';
 
 const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -227,6 +228,10 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
           </CardContent>
         </Card>
       )}
+
+      {uploadedFiles.filter(f => f.status === 'analyzed' && f.raw?.pipeline).map(file => (
+        <LearningPipelineDisplay key={file.id} pipeline={file.raw.pipeline} filename={file.name} />
+      ))}
     </div>
   );
 };
