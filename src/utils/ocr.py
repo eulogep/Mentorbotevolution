@@ -1,5 +1,3 @@
-import pytesseract
-from PIL import Image
 import os
 import sys
 
@@ -14,26 +12,18 @@ POSSIBLE_PATHS = [
 
 def _configure_tesseract():
     """Configures pytesseract tesseract_cmd path if found."""
-    # Check if tesseract is already in PATH (shutil.which)
     import shutil
+    import pytesseract
 
     if shutil.which("tesseract"):
-        return
+        return True
 
-    # Check common paths
     for path in POSSIBLE_PATHS:
         if os.path.exists(path):
             pytesseract.pytesseract.tesseract_cmd = path
-            print(f"Tesseract found at: {path}")
-            return
+            return True
 
-    # Warning if not found (will likely fail later)
-    print(
-        "WARNING: Tesseract-OCR binary not found in common paths or PATH. OCR functionality may fail."
-    )
-
-
-_configure_tesseract()
+    return False
 
 
 def extract_text_from_image(image_file):
@@ -47,17 +37,16 @@ def extract_text_from_image(image_file):
         str: Extracted text.
     """
     try:
-        # Open image with Pillow
+        import pytesseract
+        from PIL import Image
+
+        if not _configure_tesseract():
+            return "[OCR unavailable: Tesseract-OCR binary not found]"
+
         image = Image.open(image_file)
-
-        # Convert to grayscale for better accuracy (basic preprocessing)
         image = image.convert("L")
-
-        # Extract text
         text = pytesseract.image_to_string(image)
         return text.strip()
     except Exception as e:
         print(f"OCR Error: {e}", file=sys.stderr)
-        # Return empty string or re-raise depending on strategy.
-        # For now, return error message as text to avoid crashing flow
         return f"[OCR Failed: {str(e)}]"
