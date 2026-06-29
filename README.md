@@ -74,12 +74,14 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-Creer un fichier `.env` local:
+Creer un fichier `.env` local. `DATABASE_URL` est optionnel en developpement:
+si la variable est absente, l'application utilise automatiquement
+`database/app.db`.
 
 ```env
 SECRET_KEY=dev-secret-change-me
 JWT_SECRET_KEY=dev-jwt-secret-change-me
-DATABASE_URL=sqlite:///database/app.db
+# Optionnel: DATABASE_URL=sqlite:///database/app.db
 ```
 
 Pour PostgreSQL:
