@@ -7,6 +7,8 @@ Flask-CORS==5.0.*
 Flask-SQLAlchemy==3.1.*
 Flask-JWT-Extended==4.7.*
 PyJWT==2.13.*
+PyMuPDF==1.26.*
+psycopg2-binary==2.9.*
 Werkzeug==3.1.*
 Jinja2==3.1.6
 itsdangerous==2.2.0
