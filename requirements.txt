@@ -1,6 +1,10 @@
-pytesseract
-spacy
-Pillow
-flask-jwt-extended==4.5.2
-python-dotenv
-requests
+Flask==3.1.*
+Flask-Cors==5.0.*
+Flask-SQLAlchemy==3.1.*
+Flask-JWT-Extended==4.5.2
+python-dotenv==1.1.*
+requests==2.32.*
+pytesseract==0.3.*
+Pillow==11.2.*
+python-multipart==0.0.*
+werkzeug==3.1.*

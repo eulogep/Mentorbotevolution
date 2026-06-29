@@ -1,111 +1,80 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime, timedelta
-import random
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
+from src.models.user import db, Subject, Concept
 
 mastery_bp = Blueprint('mastery', __name__)
 
 @mastery_bp.route('/subjects', methods=['GET'])
+@jwt_required()
 def get_subjects():
-    subjects = [
-        {
-            "id": 1,
-            "name": "TOEIC Listening",
-            "description": "Compréhension orale du TOEIC",
-            "progress": 75,
-            "status": "in_progress",
-            "color": "from-blue-500 to-blue-600"
-        },
-        {
-            "id": 2,
-            "name": "TOEIC Reading",
-            "description": "Compréhension écrite du TOEIC",
-            "progress": 45,
-            "status": "needs_attention",
-            "color": "from-green-500 to-green-600"
-        },
-        {
-            "id": 3,
-            "name": "Grammaire Avancée",
-            "description": "Règles grammaticales complexes",
-            "progress": 90,
-            "status": "mastered",
-            "color": "from-purple-500 to-purple-600"
-        }
-    ]
-    return jsonify(subjects)
+    try:
+        user_id = int(get_jwt_identity())
+        subjects = Subject.query.filter_by(user_id=user_id).all()
+        return jsonify([s.to_dict() for s in subjects])
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @mastery_bp.route('/get-subjects', methods=['GET'])
+@jwt_required()
 def get_subjects_enhanced():
-    """Endpoint attendu par le frontend: retourne {status, subjects: [...]} avec un schéma riche"""
-    # Génération de données simulées enrichies compatibles avec MasteryDashboard
-    base_subjects = [
-        {
-            "id": 1,
-            "name": "TOEIC Listening",
-            "description": "Compréhension orale du TOEIC",
-            "progress": 72,
-        },
-        {
-            "id": 2,
-            "name": "TOEIC Reading",
-            "description": "Compréhension écrite du TOEIC",
-            "progress": 48,
-        },
-        {
-            "id": 3,
-            "name": "Grammaire Avancée",
-            "description": "Règles grammaticales complexes",
-            "progress": 91,
-        },
-    ]
+    """Endpoint attendu par le frontend: retourne {status, subjects: [...]} depuis la base de données"""
+    try:
+        user_id = int(get_jwt_identity())
+        subjects = Subject.query.filter_by(user_id=user_id).all()
 
-    def fake_concepts():
-        concepts = []
-        statuses = ['completed', 'in-progress', 'not-started']
-        names = [
-            'Phrasal Verbs', 'Tenses Review', 'Business Vocabulary',
-            'Conditional Sentences', 'Reading Strategies', 'Listening Accents'
-        ]
-        for i, nm in enumerate(random.sample(names, k=4)):
-            status = random.choice(statuses)
-            mastery = 100 if status == 'completed' else (random.randint(40, 85) if status == 'in-progress' else 0)
-            concepts.append({
-                'id': i + 1,
-                'name': nm,
-                'status': status,
-                'mastery': mastery,
-            })
-        return concepts
+        # Si l'utilisateur n'a aucun plan de maîtrise, on crée un plan TOEIC par défaut pour l'accueil
+        if not subjects:
+            default_subject = Subject(
+                user_id=user_id,
+                name="TOEIC Preparation",
+                description="Préparation complète au test du TOEIC (IA & Neurosciences)",
+                target_score=800,
+                current_score=620,
+                progress=35.0,
+                status="in_progress"
+            )
+            db.session.add(default_subject)
+            db.session.flush()
 
-    subjects = []
-    now = datetime.now()
-    for s in base_subjects:
-        subjects.append({
-            **s,
-            "target_score": 800,
-            "current_score": random.randint(600, 720),
-            "next_session": (now + timedelta(hours=random.randint(2, 48))).strftime('%d %b, %H:%M'),
-            "total_time": random.randint(12, 60),  # heures
-            "streak": random.randint(3, 20),
-            "concepts": fake_concepts(),
+            default_concepts = [
+                Concept(subject_id=default_subject.id, name="Conditional Sentences", status="in-progress", mastery=45),
+                Concept(subject_id=default_subject.id, name="Business Vocabulary", status="in-progress", mastery=65),
+                Concept(subject_id=default_subject.id, name="Listening Accents", status="not-started", mastery=0),
+                Concept(subject_id=default_subject.id, name="Reading Speed", status="not-started", mastery=0)
+            ]
+            db.session.add_all(default_concepts)
+            db.session.commit()
+            subjects = [default_subject]
+
+        return jsonify({
+            'status': 'success',
+            'subjects': [s.to_dict() for s in subjects]
         })
-
-    return jsonify({
-        'status': 'success',
-        'subjects': subjects,
-    })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @mastery_bp.route('/plan', methods=['POST'])
+@jwt_required()
 def create_plan():
-    data = request.get_json()
-    
-    # Logique pour créer un plan d'apprentissage
-    plan = {
-        "id": 1,
-        "subject": data.get('subject', 'TOEIC'),
-        "duration": data.get('duration', '30'),
-        "focus_areas": data.get('focus_areas', ['listening', 'reading']),
-        "created_at": datetime.utcnow().isoformat() + 'Z'
-    }
-    
-    return jsonify(plan), 201 
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+
+        subject_name = data.get('subject', 'TOEIC')
+        subject = Subject(
+            user_id=user_id,
+            name=subject_name,
+            description=f"Plan de maîtrise pour {subject_name}",
+            target_score=800,
+            status="in_progress"
+        )
+        db.session.add(subject)
+        db.session.commit()
+
+        return jsonify(subject.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+ 

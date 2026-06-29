@@ -10,9 +10,11 @@ API pour l'analyse de documents avec OCR et NLP
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import random
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.utils.ocr import extract_text_from_image
 from src.utils.nlp import extract_concepts, analyze_sentiment
+from src.models.user import db, Subject, Concept, Card
+
 
 analysis_bp = Blueprint("analysis", __name__)
 
@@ -215,6 +217,7 @@ def generate_spaced_repetition_schedule(concept_name):
 
 
 @analysis_bp.route("/analyze-document", methods=["POST"])
+@jwt_required()
 def analyze_document():
     """Analyse un document uploadé"""
     try:
@@ -235,9 +238,6 @@ def analyze_document():
 
         # Real Analysis
         extracted_text = ""
-
-        # Reset file pointer
-        file.seek(0)
 
         if file.content_type.startswith("image/"):
             extracted_text = extract_text_from_image(file)
@@ -350,9 +350,10 @@ def analyze_document():
 @analysis_bp.route("/generate-plan", methods=["POST"])
 @jwt_required()
 def generate_adaptive_plan():
-    """Génère un plan d'apprentissage adaptatif"""
+    """Génère un plan d'apprentissage adaptatif et le persiste en DB"""
     try:
-        data = request.get_json()
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
 
         # Paramètres requis
         target_score = data.get("target_score", 800)
@@ -362,9 +363,21 @@ def generate_adaptive_plan():
         chronotype = data.get("chronotype", "intermediate")
         concepts = data.get("concepts", [])
 
-        # Génération du plan adaptatif
+        # Création du sujet d'étude (Subject) en base de données
+        subject = Subject(
+            user_id=user_id,
+            name=f"TOEIC Objective {target_score}",
+            description=f"Plan d'apprentissage sur {timeframe_months} mois (Style: {learning_style}, Chronotype: {chronotype})",
+            target_score=target_score,
+            current_score=600,  # Score initial estimé
+            status="in_progress"
+        )
+        db.session.add(subject)
+        db.session.flush()
+
+        # Génération du plan adaptatif pour le retour API
         plan = {
-            "id": f"plan_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            "id": f"plan_{subject.id}",
             "target_score": target_score,
             "timeframe_months": timeframe_months,
             "daily_study_hours": daily_study_hours,
@@ -381,17 +394,47 @@ def generate_adaptive_plan():
         # Planification des concepts
         total_hours = 0
         for i, concept in enumerate(concepts):
+            c_name = concept.get("name", f"Concept {i + 1}")
+            c_difficulty = concept.get("difficulty", "medium")
+            c_importance = concept.get("importance", 0.5)
+
+            # Normalisation de l'importance si c'est une chaîne
+            if isinstance(c_importance, str):
+                c_importance_val = 0.9 if c_importance == "high" else (0.6 if c_importance == "medium" else 0.3)
+            else:
+                c_importance_val = float(c_importance) if c_importance is not None else 0.5
+
+            # Création du concept en base de données
+            db_concept = Concept(
+                subject_id=subject.id,
+                name=c_name,
+                status="in-progress" if i == 0 else "not-started",
+                mastery=0
+            )
+            db.session.add(db_concept)
+
+            # Auto-génération d'une carte de répétition espacée pour ce concept
+            card = Card(
+                user_id=user_id,
+                subject_id=subject.id,
+                concept_name=c_name,
+                front_content=f"Qu'est-ce que {c_name} ? Expliquez avec la méthode Feynman.",
+                back_content=f"Contenu de révision pour {c_name}.",
+                difficulty=c_difficulty,
+                priority="high" if c_importance_val > 0.7 else "normal",
+                next_review=datetime.utcnow()
+            )
+            db.session.add(card)
+
             concept_plan = {
-                "name": concept.get("name", f"Concept {i + 1}"),
+                "name": c_name,
                 "priority": i + 1,
-                "difficulty": concept.get("difficulty", "medium"),
-                "importance": concept.get("importance", 0.5),
+                "difficulty": c_difficulty,
+                "importance": c_importance,
                 "estimated_hours": random.randint(10, 40),
                 "weekly_hours": random.randint(2, 8),
                 "methods": get_methods_for_style(learning_style),
-                "spaced_repetition": generate_spaced_repetition_schedule(
-                    concept.get("name", f"Concept {i + 1}")
-                ),
+                "spaced_repetition": generate_spaced_repetition_schedule(c_name),
                 "exercises_count": random.randint(20, 50),
                 "mastery_criteria": {
                     "theoretical_understanding": 0.8,
@@ -416,9 +459,7 @@ def generate_adaptive_plan():
             milestone = {
                 "month": month,
                 "target_concepts": len(concepts) * month // timeframe_months,
-                "target_score_increase": (target_score - 650)
-                * month
-                // timeframe_months,
+                "target_score_increase": (target_score - 600) * month // timeframe_months,
                 "key_objectives": [
                     f"Maîtriser {3 * month} nouveaux concepts",
                     f"Atteindre {70 + month * 5}% de rétention moyenne",
@@ -428,9 +469,10 @@ def generate_adaptive_plan():
             plan["milestones"].append(milestone)
 
         # Planning hebdomadaire basé sur le chronotype
-        plan["weekly_schedule"] = generate_weekly_schedule(
-            chronotype, daily_study_hours
-        )
+        plan["weekly_schedule"] = generate_weekly_schedule(chronotype, daily_study_hours)
+
+        # Validation de la transaction DB
+        db.session.commit()
 
         return jsonify(
             {
@@ -445,12 +487,14 @@ def generate_adaptive_plan():
         )
 
     except Exception as e:
+        db.session.rollback()
         return jsonify(
             {
                 "status": "error",
                 "message": f"Erreur lors de la génération du plan: {str(e)}",
             }
         ), 500
+
 
 
 def get_methods_for_style(learning_style):
@@ -565,27 +609,72 @@ def get_adjustment_suggestions(plan):
 
 
 @analysis_bp.route("/update-progress", methods=["POST"])
+@jwt_required()
 def update_progress():
-    """Met à jour la progression d'un concept"""
+    """Met à jour la progression d'un concept en base de données"""
     try:
-        data = request.get_json()
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
 
         concept_id = data.get("concept_id")
-        mastery_level = data.get("mastery_level", 0)
-        retention_rate = data.get("retention_rate", 0)
-        time_spent = data.get("time_spent", 0)
+        mastery_level = data.get("mastery_level", 0.0)
+        retention_rate = data.get("retention_rate", 0.0)
+        time_spent = data.get("time_spent", 0.0)
 
-        # Simulation de mise à jour (en réalité, sauvegarder en base de données)
+        # Recherche du concept
+        db_concept = (
+            Concept.query
+            .join(Subject)
+            .filter(Subject.user_id == user_id)
+            .filter((Concept.id == concept_id) | (Concept.name == concept_id))
+            .first()
+        )
+
+        if db_concept:
+            db_concept.mastery = int(mastery_level * 100)
+            db_concept.status = "completed" if mastery_level >= 0.9 else ("in-progress" if mastery_level > 0.0 else "not-started")
+
+            # Enregistrement d'une session d'étude
+            session = StudySession(
+                user_id=user_id,
+                subject_id=db_concept.subject_id,
+                session_type="validation",
+                cards_reviewed=1,
+                cards_correct=1 if mastery_level >= 0.7 else 0,
+                duration_minutes=time_spent,
+                started_at=datetime.utcnow() - timedelta(minutes=time_spent),
+                ended_at=datetime.utcnow()
+            )
+            db.session.add(session)
+
+            # Mise à jour des cartes associées (algorithme SM-2)
+            card = Card.query.filter_by(user_id=user_id, concept_name=db_concept.name).first()
+            if card:
+                # Convertir retention_rate (0..1) en qualité de réponse SM-2 (0..5)
+                quality = max(0, min(5, round(retention_rate * 5)))
+                from src.routes.spaced_repetition import SpacedRepetitionAlgorithm
+                new_interval, new_easiness = SpacedRepetitionAlgorithm.calculate_next_interval(
+                    card.interval, card.easiness_factor, quality
+                )
+                card.interval = new_interval
+                card.easiness_factor = new_easiness
+                card.review_count += 1
+                if quality >= 3:
+                    card.success_count += 1
+                card.total_response_time += (time_spent * 60)
+                card.last_reviewed = datetime.utcnow()
+                card.next_review = datetime.utcnow() + timedelta(days=new_interval)
+
+            db.session.commit()
+
+        next_review_days = calculate_next_review_interval(mastery_level)
         updated_concept = {
             "concept_id": concept_id,
             "mastery_level": mastery_level,
             "retention_rate": retention_rate,
             "time_spent": time_spent,
             "last_updated": datetime.now().isoformat(),
-            "next_review": (
-                datetime.now()
-                + timedelta(days=calculate_next_review_interval(mastery_level))
-            ).isoformat(),
+            "next_review": (datetime.now() + timedelta(days=next_review_days)).isoformat(),
         }
 
         return jsonify(
@@ -597,9 +686,11 @@ def update_progress():
         )
 
     except Exception as e:
+        db.session.rollback()
         return jsonify(
             {"status": "error", "message": f"Erreur lors de la mise à jour: {str(e)}"}
         ), 500
+
 
 
 def calculate_next_review_interval(mastery_level):

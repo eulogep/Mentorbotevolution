@@ -13,6 +13,7 @@ basée sur l'IA et les neurosciences pour optimiser la préparation au TOEIC.
 
 import os
 import sys
+import logging
 
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(__file__))  # noqa: E402
@@ -35,12 +36,17 @@ load_dotenv()
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "default-dev-key-please-change")
 app.config["JWT_SECRET_KEY"] = os.environ.get(
-    "JWT_SECRET_KEY", os.environ.get("SECRET_KEY", "jwt-secret-key")
+    "JWT_SECRET_KEY", os.environ.get("SECRET_KEY", "default-dev-key-please-change")
 )
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=1)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max upload size
 
-# Configuration CORS pour permettre les requêtes cross-origin
-CORS(app)
+# Configuration CORS pour permettre les requêtes cross-origin (restreint aux origines connues)
+CORS(app, origins=[
+    "https://mentorbotevolution.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5000",
+])
 jwt = JWTManager(app)
 
 # Enregistrement des blueprints existants
@@ -72,16 +78,15 @@ db.init_app(app)
 with app.app_context():
     try:
         db.create_all()
-    except Exception:
-        # En environnement serverless, échouer silencieusement si non nécessaire
-        pass
+    except Exception as e:
+        logging.warning(f"Could not create database tables: {e}")
 
 
 @app.route("/api/health")
 def health_check():
     return {
         "status": "healthy",
-        "service": "fastapi-gateway",  # Keeping original name for compatibility with tests
+        "service": "mentorbot-flask-api",
         "version": "2.0.0",
     }
 

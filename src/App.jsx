@@ -9,12 +9,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Brain, Target, Users, Zap, BookOpen, BarChart3, Calendar, Settings, Sparkles, TrendingUp, Clock, Award } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card.jsx';
+import { Brain, Target, Users, Zap, BookOpen, BarChart3, Calendar, Sparkles, TrendingUp, Clock, Award, Menu, X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card.jsx';
 import { Button } from './components/ui/button.jsx';
 import { Progress } from './components/ui/progress.jsx';
 import { Badge } from './components/ui/badge.jsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs.jsx';
 import MasteryDashboard from './components/MasteryPlan/MasteryDashboard.jsx';
 import { useAuth } from './context/AuthContext';
 
@@ -47,6 +46,7 @@ const AnimatedStat = ({ value, suffix = '' }) => {
 function App() {
   const [activeModule, setActiveModule] = useState('mastery');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -364,7 +364,7 @@ function App() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">Apprentissage Collaboratif</h2>
-                  <p className="text-pink-100">Rejoignez des groupes d'��tude et bénéficiez de mentorat</p>
+                  <p className="text-pink-100">Rejoignez des groupes d'étude et bénéficiez de mentorat</p>
                 </div>
               </div>
             </div>
@@ -472,7 +472,7 @@ function App() {
                       <span className="text-2xl font-bold text-white">85%</span>
                     </div>
                     <div className="text-lg font-semibold text-gray-800 mb-1">Probabilité d'atteindre 800</div>
-                    <div className="text-sm text-gray-600">Estimation: 15 Sept 2024</div>
+                    <div className="text-sm text-gray-600">Estimation: {new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                     <Badge className="mt-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                       Très probable
                     </Badge>
@@ -524,19 +524,69 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-right">
+              <div className="text-right hidden sm:block">
                 <div className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   {user?.email || 'Utilisateur'}
                 </div>
                 <div className="text-xs text-gray-500">Score: <AnimatedStat value={progressData.currentScore} /></div>
               </div>
-              <Button onClick={() => logout()} variant="outline" size="sm" className="hover:text-red-600 hover:border-red-200 transition-all duration-200">
+              <Button onClick={() => logout()} variant="outline" size="sm" className="hidden sm:inline-flex hover:text-red-600 hover:border-red-200 transition-all duration-200">
                 Déconnexion
               </Button>
+              {/* Mobile hamburger menu button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Menu"
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
             </div>
           </div>
         </div>
       </header>
+
+      {/* Mobile slide-out menu */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="fixed top-16 left-0 right-0 bg-white/95 backdrop-blur-lg shadow-2xl border-b border-gray-200 max-h-[70vh] overflow-y-auto animate-fade-in-up">
+            <nav className="p-4 space-y-2">
+              {modules.map((module) => {
+                const IconComponent = module.icon;
+                const isActive = activeModule === module.id;
+                return (
+                  <button
+                    key={module.id}
+                    onClick={() => { setActiveModule(module.id); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-all duration-200 ${isActive
+                      ? `bg-gradient-to-r ${module.gradient} text-white shadow-lg`
+                      : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isActive
+                      ? 'bg-white/20'
+                      : `bg-gradient-to-r ${module.gradient}`
+                    }`}>
+                      <IconComponent className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className={`font-semibold text-sm ${isActive ? 'text-white' : 'text-gray-800'}`}>{module.name}</div>
+                      <div className={`text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>{module.description}</div>
+                    </div>
+                  </button>
+                );
+              })}
+              <div className="pt-3 border-t border-gray-200">
+                <div className="px-4 py-2 text-sm text-gray-600">{user?.email}</div>
+                <Button onClick={() => { logout(); setMobileMenuOpen(false); }} variant="outline" size="sm" className="w-full hover:text-red-600 hover:border-red-200">
+                  Déconnexion
+                </Button>
+              </div>
+            </nav>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-100 p-6 md:p-10 border border-emerald-100 shadow-xl animate-fade-in-up">
@@ -632,9 +682,9 @@ function App() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar moderne avec glassmorphism */}
-          <div className="w-80 flex-shrink-0">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar moderne avec glassmorphism — hidden on mobile */}
+          <div className="hidden lg:block w-80 flex-shrink-0">
             <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-lg">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -778,7 +828,7 @@ function App() {
                 EULOGE MABIALA
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                © 2024 - Tous droits réservés
+                                © {new Date().getFullYear()} - Tous droits réservés
               </p>
             </div>
           </div>

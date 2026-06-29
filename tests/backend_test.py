@@ -3,11 +3,11 @@
 Backend API Testing Suite for Euloge Learning Platform
 ======================================================
 
-Tests the FastAPI gateway mounting the Flask app with all API endpoints.
-Base URL: http://localhost (ingress routes /api -> backend 0.0.0.0:8001)
+Tests the Flask backend app with all API endpoints.
+Base URL: http://localhost:5000
 
 Test Coverage:
-1. GET /api/health -> FastAPI health check
+1. GET /api/health -> Health check
 2. GET /api/mastery/get-subjects -> Mastery dashboard data
 3. GET /api/learning/progress -> Learning progress data
 4. GET /api/spaced-repetition/get-schedule -> Spaced repetition schedule
@@ -79,17 +79,6 @@ class BackendTester:
         try:
             response = self.session.get(f"{self.base_url}/api/health", timeout=10)
 
-            # Allow 404 for health check if using Flask dev server directly as it might not have /api/health if that was just for the gateway
-            # However, main.py doesn't seem to have /api/health. It has blueprints.
-            # Let's check main.py content again. It registers blueprints but no explicit health route?
-            # backend_test.py docstring says "Tests the FastAPI gateway...".
-            # If we are testing Flask directly, we might not have /api/health.
-            # I will skip health check or expect 404 if not found?
-            # Actually, let's look at main.py. It has no health route.
-            # So this test is expected to fail against Flask directly unless I add it.
-            # I will Add a /api/health route to main.py later if needed.
-            # For now, let's keep the test and see.
-
             if response.status_code != 200:
                 self.log_test(
                     "Health Check",
@@ -107,7 +96,7 @@ class BackendTester:
             ):
                 return False
 
-            self.log_test("Health Check", True, f"Status: {data.get('status')}")
+            self.log_test("Health Check", True, f"Status: {data.get('status')}, Service: {data.get('service')}")
             return True
 
         except Exception as e:
@@ -417,6 +406,7 @@ class BackendTester:
                 return False
 
             self.access_token = data["access_token"]
+            self.session.headers.update({"Authorization": f"Bearer {self.access_token}"})
             self.log_test(
                 "User Login", True, "User logged in successfully with JWT token"
             )
@@ -509,12 +499,12 @@ class BackendTester:
 
         tests = [
             ("Health Check", self.test_health_endpoint),
+            ("User Registration/Login", self.test_user_registration_and_login),
             ("Mastery Subjects", self.test_mastery_subjects),
             ("Learning Progress", self.test_learning_progress),
             ("Spaced Repetition Schedule", self.test_spaced_repetition_schedule),
             ("Create Card", self.test_create_card),
             ("Review Card", self.test_review_card),
-            ("User Registration/Login", self.test_user_registration_and_login),
             ("Generate Plan", self.test_generate_plan),
         ]
 

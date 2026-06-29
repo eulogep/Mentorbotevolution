@@ -10,9 +10,26 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
-    // Configure axios defaults
+    // Check if a JWT token is expired by decoding its payload
+    const isTokenExpired = (jwt) => {
+        try {
+            const payload = JSON.parse(atob(jwt.split('.')[1]));
+            return payload.exp * 1000 < Date.now();
+        } catch {
+            return true; // If we can't decode it, treat as expired
+        }
+    };
+
+    // Configure axios defaults and validate token on mount
     useEffect(() => {
         if (token) {
+            if (isTokenExpired(token)) {
+                // Token expired — clear it and force re-login
+                setToken(null);
+                setUser(null);
+                setLoading(false);
+                return;
+            }
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             localStorage.setItem('token', token);
         } else {
@@ -59,6 +76,20 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setToken(null);
     };
+
+    // Global Axios interceptor: auto-logout on 401 Unauthorized
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error.response?.status === 401 && token) {
+                    logout();
+                }
+                return Promise.reject(error);
+            }
+        );
+        return () => axios.interceptors.response.eject(interceptor);
+    }, [token]);
 
     const value = {
         user,
