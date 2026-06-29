@@ -9,8 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import DocumentUploader from './DocumentUploader';
 import PlanGenerator from './PlanGenerator';
 import ValidationChecklist from './ValidationChecklist';
-import SpacedReview from './SpacedReview';
 import SpacedAnalytics from './SpacedAnalytics';
+import FlashcardReviewSession from './FlashcardReviewSession';
 
 const MasteryDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -70,7 +70,7 @@ const MasteryDashboard = () => {
         </TabsContent>
 
         <TabsContent value="spaced" className="mt-6">
-          <SpacedReview />
+          <FlashcardReviewSession />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">
