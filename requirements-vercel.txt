@@ -9,3 +9,4 @@ Pillow==11.2.*
 python-multipart==0.0.*
 werkzeug==3.1.*
 gunicorn==21.2.0
+pyjwt>=2.13.0 # not directly required, pinned by Snyk to avoid a vulnerability
