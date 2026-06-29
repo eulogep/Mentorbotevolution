@@ -32,7 +32,7 @@ PostgreSQL possible via `DATABASE_URL`.
 ## Fonctionnalites prevues
 
 - Brancher une base PostgreSQL geree en production via `DATABASE_URL`.
-- Ajouter de vraies migrations de schema.
+- Etendre les migrations de schema au fil des changements de modele.
 - Remplacer progressivement les heuristiques NLP par une analyse plus robuste.
 - Ameliorer les tests d'integration frontend/backend.
 - Ajouter un suivi de progression plus precis et moins statique.
@@ -129,6 +129,15 @@ Compilation Python:
 ```bash
 python -m compileall main.py src api backend tests
 ```
+
+Migrations de base de donnees:
+
+```bash
+python -m flask db upgrade
+```
+
+Voir `docs/DATABASE.md` pour la configuration SQLite/PostgreSQL et la creation
+de nouvelles migrations.
 
 Audit npm:
 
