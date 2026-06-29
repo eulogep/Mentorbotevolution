@@ -45,14 +45,8 @@ const AnimatedStat = ({ value, suffix = '' }) => {
 
 function App() {
   const [activeModule, setActiveModule] = useState('mastery');
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Données de progression simulées
   const progressData = {

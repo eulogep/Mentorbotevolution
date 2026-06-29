@@ -1,26 +1,17 @@
 {
-  "name": "euloge-learning-platform",
-  "project": {
-    "name": "Euloge Learning Platform",
-    "author": "MABIALA EULOGE",
-    "description": "Plateforme d'apprentissage moderne basée sur l'IA et les neurosciences",
-    "repository": "https://github.com/eulogep/mentorbotevolution"
-  },
-  "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
-    { "src": "main.py", "use": "@vercel/python" }
-  ],
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/api/(.*)", "dest": "main.py" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "env": { "PYTHON_VERSION": "3.11" },
-  "build": {
-    "env": {
-      "AUTHOR": "MABIALA EULOGE",
-      "PROJECT_DESCRIPTION": "Plateforme d'apprentissage moderne basée sur l'IA et les neurosciences"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  }
+  ]
 }

@@ -34,7 +34,11 @@ const MasteryDashboard = () => {
     <div className="space-y-3">
       <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-lg">
         <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Sparkles className="h-5 w-5 text-purple-500" />Bienvenue</CardTitle></CardHeader>
-        <CardContent>Générez vos plans, révisez vos cartes et suivez votre progression.</CardContent>
+        <CardContent>
+          {loading
+            ? 'Chargement de vos matières...'
+            : `Générez vos plans, révisez vos cartes et suivez votre progression sur ${subjects.length} matière${subjects.length > 1 ? 's' : ''}.`}
+        </CardContent>
       </Card>
     </div>
   );
