@@ -19,6 +19,7 @@ Pour approfondir et comprendre les règles opérationnelles, consultez les docum
 2. **[Stratégie d'Optimisation des Tokens (docs/TOKEN_STRATEGY.md)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/TOKEN_STRATEGY.md)** : Comment consommer moins de contexte.
 3. **[Architecture Technique Globale (docs/ARCHITECTURE.md)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/ARCHITECTURE.md)** : Structure des dossiers, flux de données, modèles DB.
 4. **[Registre des Décisions d'Architecture (docs/DECISIONS/)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/DECISIONS)** : Fiches ADR détaillant les orientations techniques (Flask vs FastAPI, SQLite vs Postgres, etc.).
+5. **[Stratégie des Skills (docs/SKILLS.md)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/SKILLS.md)** : Utilisation de compétences réutilisables (Skill-First).
 
 ---
 
@@ -38,6 +39,13 @@ graph TD
 3. **Test** : Lancer systématiquement la suite de tests et de compilation (voir commandes ci-dessous).
 4. **Report** : Documenter succinctement les modifications dans un Walkthrough sans paraphraser les fichiers.
 5. **Stop** : Terminer le tour de parole de manière nette.
+
+---
+
+## ⚡ Skill-First Rule
+
+Before implementing a non-trivial task, the agent must check whether a relevant local or external skill exists. Skills are tools for execution consistency, not permission to expand the scope. Use at most 1–3 relevant skills per task and document every installed or used skill in `docs/SKILLS.md`.
+
 
 ---
 
