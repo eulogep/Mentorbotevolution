@@ -11,7 +11,7 @@ os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-with-enough-length-for-hs256"
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from main import app, get_database_uri  # noqa: E402
+from main import app, get_database_uri, should_auto_create_tables  # noqa: E402
 from src.models.user import Concept, StudySession, Subject, db  # noqa: E402
 from src.utils import document_extraction  # noqa: E402
 
@@ -60,6 +60,22 @@ def test_flask_routes_start(client):
 def test_database_url_postgres_scheme_is_normalized(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/app")
     assert get_database_uri() == "postgresql://user:pass@localhost:5432/app"
+
+
+def test_flask_migrate_extension_is_registered():
+    assert "migrate" in app.extensions
+
+
+def test_database_auto_create_policy_prefers_migrations_for_postgres(monkeypatch):
+    monkeypatch.delenv("AUTO_CREATE_DB", raising=False)
+    assert should_auto_create_tables("sqlite:///:memory:") is True
+    assert should_auto_create_tables("postgresql://user:pass@localhost:5432/app") is False
+
+    monkeypatch.setenv("AUTO_CREATE_DB", "true")
+    assert should_auto_create_tables("postgresql://user:pass@localhost:5432/app") is True
+
+    monkeypatch.setenv("AUTO_CREATE_DB", "false")
+    assert should_auto_create_tables("sqlite:///:memory:") is False
 
 
 def test_register_and_login(client):

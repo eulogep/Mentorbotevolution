@@ -23,6 +23,7 @@ from dotenv import load_dotenv  # noqa: E402
 from flask import Flask, send_from_directory  # noqa: E402
 from flask_cors import CORS  # noqa: E402
 from flask_jwt_extended import JWTManager  # noqa: E402
+from flask_migrate import Migrate  # noqa: E402
 from datetime import timedelta  # noqa: E402
 from src.models.user import db  # noqa: E402
 from src.routes.user import user_bp  # noqa: E402
@@ -54,6 +55,16 @@ def get_database_uri():
     os.makedirs(db_dir, exist_ok=True)
     return f"sqlite:///{os.path.join(db_dir, 'app.db')}"
 
+
+def should_auto_create_tables(database_uri=None):
+    auto_create = os.environ.get("AUTO_CREATE_DB")
+    if auto_create is not None:
+        return auto_create.strip().lower() in {"1", "true", "yes", "on"}
+
+    uri = database_uri or get_database_uri()
+    return uri.startswith("sqlite:")
+
+
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "default-dev-key-please-change")
 app.config["JWT_SECRET_KEY"] = os.environ.get(
@@ -69,6 +80,7 @@ CORS(app, origins=[
     "http://localhost:5000",
 ])
 jwt = JWTManager(app)
+migrate = Migrate()
 
 # Enregistrement des blueprints existants
 app.register_blueprint(user_bp, url_prefix="/api/user")
@@ -86,13 +98,20 @@ app.register_blueprint(spaced_repetition_bp, url_prefix="/api/spaced-repetition"
 app.config["SQLALCHEMY_DATABASE_URI"] = get_database_uri()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Initialisation DB (création des tables si nécessaire)
+# Database initialization.
+# Flask-Migrate/Alembic is the recommended schema-management path.
+# db.create_all() is kept only as a SQLite/dev fallback so local runs and tests
+# still work without requiring an explicit migration command first.
 db.init_app(app)
-with app.app_context():
-    try:
-        db.create_all()
-    except Exception as e:
-        logging.warning(f"Could not create database tables: {e}")
+migrate.init_app(app, db)
+if should_auto_create_tables(app.config["SQLALCHEMY_DATABASE_URI"]):
+    with app.app_context():
+        try:
+            db.create_all()
+        except Exception as e:
+            logging.warning(f"Could not create database tables: {e}")
+else:
+    logging.info("Skipping automatic table creation; use Flask-Migrate migrations.")
 
 
 @app.route("/api/health")
