@@ -14,6 +14,7 @@ basée sur l'IA et les neurosciences pour optimiser la préparation au TOEIC.
 import os
 import sys
 import logging
+import tempfile
 
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(__file__))  # noqa: E402
@@ -42,10 +43,12 @@ def get_database_uri():
         return database_url
 
     if os.environ.get("VERCEL"):
+        tmp_dir = tempfile.gettempdir() if os.name == "nt" else "/tmp"
+        os.makedirs(tmp_dir, exist_ok=True)
         logging.warning(
-            "DATABASE_URL is not set on Vercel; falling back to ephemeral SQLite in /tmp."
+            "DATABASE_URL is not set on Vercel; falling back to ephemeral SQLite."
         )
-        return "sqlite:////tmp/app.db"
+        return f"sqlite:///{os.path.join(tmp_dir, 'app.db')}"
 
     db_dir = os.path.join(os.path.dirname(__file__), "database")
     os.makedirs(db_dir, exist_ok=True)

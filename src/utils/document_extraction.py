@@ -3,10 +3,7 @@ from io import BytesIO
 import os
 import sys
 
-import pytesseract
-from PIL import Image
-
-from src.utils.ocr import extract_text_from_image
+from src.utils.ocr import _configure_tesseract, extract_text_from_image
 
 
 @dataclass
@@ -53,12 +50,16 @@ def extract_text_from_pdf(file_storage, max_ocr_pages=3):
                 return DocumentExtractionResult(text=extracted_text, method="pdf_text")
 
             ocr_chunks = []
-            for page in list(document)[:max_ocr_pages]:
-                pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
-                image = Image.open(BytesIO(pixmap.tobytes("png"))).convert("L")
-                ocr_text = pytesseract.image_to_string(image).strip()
-                if ocr_text:
-                    ocr_chunks.append(ocr_text)
+            if _configure_tesseract():
+                import pytesseract
+                from PIL import Image
+
+                for page in list(document)[:max_ocr_pages]:
+                    pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+                    image = Image.open(BytesIO(pixmap.tobytes("png"))).convert("L")
+                    ocr_text = pytesseract.image_to_string(image).strip()
+                    if ocr_text:
+                        ocr_chunks.append(ocr_text)
 
             if ocr_chunks:
                 return DocumentExtractionResult(
@@ -70,7 +71,10 @@ def extract_text_from_pdf(file_storage, max_ocr_pages=3):
             return DocumentExtractionResult(
                 text="",
                 method="pdf_no_text",
-                fallback_reason="No readable text found with embedded text extraction or OCR",
+                fallback_reason=(
+                    "No readable text found with embedded text extraction or "
+                    "OCR is unavailable"
+                ),
             )
     except Exception as exc:
         print(f"PDF extraction error: {exc}", file=sys.stderr)
