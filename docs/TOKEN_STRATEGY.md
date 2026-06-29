@@ -11,7 +11,7 @@ Ce document fournit des techniques pour réduire la consommation de tokens lors 
 ---
 
 ## 📖 Lectures de Fichiers Segmentées
-- **Ne lisez pas de fichiers entiers** : Si un fichier dépasse 150 lignes (comme [src/App.jsx](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/src/App.jsx) qui fait 800+ lignes), lisez uniquement la plage de lignes concernée par votre tâche en fournissant les arguments `StartLine` et `EndLine` à l'outil `view_file`.
+- **Ne lisez pas de fichiers entiers** : Si un fichier dépasse 150 lignes (comme [src/App.jsx](src/App.jsx) qui fait 800+ lignes), lisez uniquement la plage de lignes concernée par votre tâche en fournissant les arguments `StartLine` et `EndLine` à l'outil `view_file`.
 - **Limites** : Restreignez vos lectures à 100 lignes maximum à la fois lorsque vous cherchez un bloc de logique spécifique.
 
 ---

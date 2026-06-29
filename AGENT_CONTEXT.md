@@ -15,11 +15,11 @@ Bienvenue, agent IA (Claude Code, Gemini, Copilot, etc.). Ce document est votre 
 
 ## 🗂️ Index de la Documentation
 Pour approfondir et comprendre les règles opérationnelles, consultez les documents suivants :
-1. **[Règles et Comportement de l'Agent (docs/AGENTS.md)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/AGENTS.md)** : Pièges à éviter absolument (Known traps), pair-programming.
-2. **[Stratégie d'Optimisation des Tokens (docs/TOKEN_STRATEGY.md)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/TOKEN_STRATEGY.md)** : Comment consommer moins de contexte.
-3. **[Architecture Technique Globale (docs/ARCHITECTURE.md)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/ARCHITECTURE.md)** : Structure des dossiers, flux de données, modèles DB.
-4. **[Registre des Décisions d'Architecture (docs/DECISIONS/)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/DECISIONS)** : Fiches ADR détaillant les orientations techniques (Flask vs FastAPI, SQLite vs Postgres, etc.).
-5. **[Stratégie des Skills (docs/SKILLS.md)](file:///c:/Users/mabia/OneDrive/Desktop/03_PROJETS-TECH/Projets-Dev-Perso/mentor%20evolution/docs/SKILLS.md)** : Utilisation de compétences réutilisables (Skill-First).
+1. **[Règles et Comportement de l'Agent (docs/AGENTS.md)](docs/AGENTS.md)** : Pièges à éviter absolument (Known traps), pair-programming.
+2. **[Stratégie d'Optimisation des Tokens (docs/TOKEN_STRATEGY.md)](docs/TOKEN_STRATEGY.md)** : Comment consommer moins de contexte.
+3. **[Architecture Technique Globale (docs/ARCHITECTURE.md)](docs/ARCHITECTURE.md)** : Structure des dossiers, flux de données, modèles DB.
+4. **[Registre des Décisions d'Architecture (docs/DECISIONS/)](docs/DECISIONS/)** : Fiches ADR détaillant les orientations techniques (Flask vs FastAPI, SQLite vs Postgres, etc.).
+5. **[Stratégie des Skills (docs/SKILLS.md)](docs/SKILLS.md)** : Utilisation de compétences réutilisables (Skill-First).
 
 ---
 
