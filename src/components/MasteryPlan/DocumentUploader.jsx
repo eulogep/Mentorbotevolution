@@ -129,6 +129,16 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
+  const handleSaveFlashcards = async (filename, flashcards) => {
+    const payload = {
+      source_document: filename,
+      pipeline_version: "0.1",
+      flashcards: flashcards
+    };
+    const res = await axios.post('/api/spaced-repetition/import-pipeline-flashcards', payload);
+    return res.data;
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -230,7 +240,12 @@ const DocumentUploader = ({ onUploadComplete, onAnalysisStart }) => {
       )}
 
       {uploadedFiles.filter(f => f.status === 'analyzed' && f.raw?.pipeline).map(file => (
-        <LearningPipelineDisplay key={file.id} pipeline={file.raw.pipeline} filename={file.name} />
+        <LearningPipelineDisplay 
+          key={file.id} 
+          pipeline={file.raw.pipeline} 
+          filename={file.name} 
+          onSaveFlashcards={(cards) => handleSaveFlashcards(file.name, cards)}
+        />
       ))}
     </div>
   );

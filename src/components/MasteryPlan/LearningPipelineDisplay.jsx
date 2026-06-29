@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { BookOpen, Brain, Sparkles, HelpCircle, Calendar, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, Brain, Sparkles, HelpCircle, Calendar, ShieldCheck, ChevronDown, ChevronUp, FolderPlus, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 
-const LearningPipelineDisplay = ({ pipeline, filename }) => {
+const LearningPipelineDisplay = ({ pipeline, filename, onSaveFlashcards }) => {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null); // 'success', 'error', or null
+  const [saveMessage, setSaveMessage] = useState('');
 
   if (!pipeline) return null;
 
@@ -16,6 +20,32 @@ const LearningPipelineDisplay = ({ pipeline, filename }) => {
     is_simulated = false,
     pipeline_version = "0.1"
   } = pipeline;
+
+  const handleSaveClick = async () => {
+    if (!onSaveFlashcards || isSaving) return;
+    setIsSaving(true);
+    setSaveStatus(null);
+    setSaveMessage('');
+    try {
+      const res = await onSaveFlashcards(flashcards);
+      if (res && res.status === 'success') {
+        setSaveStatus('success');
+        if (res.skipped_count > 0) {
+          setSaveMessage(`${res.saved_count} flashcards sauvegardées, ${res.skipped_count} ignorée(s) car déjà présente(s) ou invalide(s).`);
+        } else {
+          setSaveMessage(`${res.saved_count} flashcards sauvegardées avec succès !`);
+        }
+      } else {
+        setSaveStatus('error');
+        setSaveMessage(res?.message || "Une erreur est survenue lors de la sauvegarde.");
+      }
+    } catch (err) {
+      setSaveStatus('error');
+      setSaveMessage(err.message || "Une erreur réseau est survenue.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Card className="border-0 shadow-2xl bg-gradient-to-br from-white/90 to-purple-50/50 backdrop-blur-xl rounded-2xl overflow-hidden mt-6 transition-all duration-300 hover:shadow-purple-100">
@@ -42,6 +72,23 @@ const LearningPipelineDisplay = ({ pipeline, filename }) => {
                 Mode heuristique local — aucune IA externe utilisée
               </Badge>
             )}
+
+            {flashcards.length > 0 && onSaveFlashcards && (
+              <Button
+                size="sm"
+                onClick={handleSaveClick}
+                disabled={isSaving}
+                className="bg-purple-700 hover:bg-purple-800 text-white font-bold py-1 px-3 rounded-full flex items-center gap-1.5 shadow transition-all duration-200"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FolderPlus className="h-3.5 w-3.5" />
+                )}
+                Sauvegarder les flashcards
+              </Button>
+            )}
+
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-1.5 hover:bg-purple-50 rounded-lg text-purple-700 transition-colors"
@@ -54,6 +101,27 @@ const LearningPipelineDisplay = ({ pipeline, filename }) => {
 
       {isExpanded && (
         <CardContent className="p-6 space-y-6">
+          {/* Status Alert */}
+          {saveStatus && (
+            <div className={`p-4 rounded-xl flex items-start gap-3 border ${
+              saveStatus === 'success' 
+                ? 'bg-green-50 border-green-200 text-green-800' 
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              {saveStatus === 'success' ? (
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+              )}
+              <div>
+                <p className="text-sm font-bold">
+                  {saveStatus === 'success' ? 'Sauvegarde réussie' : 'Erreur de sauvegarde'}
+                </p>
+                <p className="text-xs font-medium mt-0.5">{saveMessage}</p>
+              </div>
+            </div>
+          )}
+
           {/* Résumé du Document */}
           <div className="space-y-2 p-4 bg-white/60 border border-purple-50 rounded-xl shadow-sm">
             <h3 className="text-sm font-semibold text-purple-950 flex items-center gap-2">

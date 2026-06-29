@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import math
 
 from src.models.user import db, Card, StudySession
+from src.services.pipeline_flashcard_import import import_pipeline_flashcards
 
 spaced_repetition_bp = Blueprint('spaced_repetition', __name__)
 
@@ -353,3 +354,21 @@ def _generate_review_feedback(quality_response, new_interval, success_rate):
         feedback['tips'].append("Concentrez-vous sur la compréhension avant la mémorisation")
 
     return feedback
+
+
+@spaced_repetition_bp.route('/import-pipeline-flashcards', methods=['POST'])
+@jwt_required()
+def import_pipeline_cards():
+    """Importe les flashcards du pipeline d'apprentissage pour l'utilisateur connecté."""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+
+        result = import_pipeline_flashcards(user_id, data)
+        if result.get("status") == "error":
+            return jsonify(result), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Erreur serveur : {str(e)}"}), 500
