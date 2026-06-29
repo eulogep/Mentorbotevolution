@@ -49,7 +49,7 @@ PostgreSQL possible via `DATABASE_URL`.
 ## Prerequis
 
 - Node.js 18 ou plus recent.
-- Python 3.11 recommande.
+- Python 3.12 recommande.
 - Tesseract OCR pour l'analyse d'images et le fallback OCR des PDF scannes.
 - PostgreSQL optionnel pour un environnement proche production.
 
