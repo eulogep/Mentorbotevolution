@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from main import app, get_database_uri  # noqa: E402
 from src.models.user import Concept, StudySession, Subject, db  # noqa: E402
+from src.utils import document_extraction  # noqa: E402
 
 
 @pytest.fixture()
@@ -121,6 +122,31 @@ def test_analyze_pdf_upload_when_pymupdf_available(client, auth_headers):
     assert analysis["extraction_method"] == "pdf_text"
     assert analysis["is_simulated"] is False
     assert "PDF grammar lesson" in analysis["extracted_text"]
+
+
+def test_pdf_extraction_error_uses_stable_public_reason():
+    result = document_extraction.extract_text_from_pdf(io.BytesIO(b"not a real pdf"))
+    assert result.text == ""
+    assert result.method == "pdf_error"
+    assert result.fallback_reason == "PDF text extraction failed"
+    assert "not a real pdf" not in result.fallback_reason
+
+
+def test_image_ocr_failure_sentinel_is_not_treated_as_text(monkeypatch):
+    class FakeUpload(io.BytesIO):
+        content_type = "image/png"
+        filename = "scan.png"
+
+    monkeypatch.setattr(
+        document_extraction,
+        "extract_text_from_image",
+        lambda _file: "[OCR Failed: tesseract missing]",
+    )
+
+    result = document_extraction.extract_text_from_document(FakeUpload(b"image"))
+    assert result.text == ""
+    assert result.method == "image_ocr_failed"
+    assert result.fallback_reason == "Image OCR failed"
 
 
 def test_create_and_review_spaced_repetition_card(client, auth_headers):
