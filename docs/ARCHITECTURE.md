@@ -23,6 +23,7 @@ mentor-bot-evolution/
 │   ├── context/              # Contextes React (AuthContext)
 │   ├── models/               # Modèles de base de données SQLAlchemy (user.py)
 │   ├── routes/               # Blueprints Flask (user, analysis, spaced_repetition, mastery, learning)
+│   ├── services/             # Services métiers (learning_pipeline, concept_extraction, flashcard_generation)
 │   ├── utils/                # Utilitaires backend (OCR, NLP) et frontend (API client)
 │   ├── App.jsx               # Composant React racine
 │   ├── index.css             # Styles Tailwind globaux
@@ -86,3 +87,19 @@ Les modèles SQLAlchemy sont définis dans `src/models/user.py` :
 - **Concept** : Une notion spécifique au sein d'une matière avec un score de maîtrise (0-100) et un statut (`completed`, `in-progress`, `not-started`).
 - **Card** : Carte mémoire pour l'algorithme de répétition espacée (conserve `interval`, `easiness_factor` et `next_review`).
 - **StudySession** : Enregistrement de session de travail (durée, précision) utilisé pour générer les graphiques d'analytics de progression.
+
+---
+
+## ⛓️ Pipeline d'Apprentissage (Learning Pipeline Core)
+
+Le pipeline d'apprentissage structure le flux d'analyse de documents et de génération de contenu pédagogique en 6 étapes :
+
+1. **Document** : L'utilisateur importe un document (PDF/Image/Texte) via l'interface.
+2. **Extraction** : Le module `src/utils/document_extraction.py` extrait le texte brut de manière résiliente.
+3. **Concepts** : Le service `src/services/concept_extraction.py` analyse la fréquence et la structure pour identifier les notions clés avec un score de confiance.
+4. **Flashcards** : Le service `src/services/flashcard_generation.py` crée des questions/réponses adaptées pour chaque concept.
+5. **Révision espacée** : Le pipeline planifie un calendrier de révisions (`revision_plan`) basé sur des intervalles exponentiels.
+6. **Progression** : Les révisions successives alimentent les statistiques de maîtrise persistées en base de données.
+
+Le pipeline est coordonné par le service central `src/services/learning_pipeline.py` et exposé via le champ `pipeline` dans la route d'analyse `/api/analysis/analyze-document`.
+

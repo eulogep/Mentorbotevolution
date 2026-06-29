@@ -14,6 +14,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.utils.document_extraction import extract_text_from_document
 from src.utils.nlp import extract_concepts, analyze_sentiment
 from src.models.user import db, Subject, Concept, Card, StudySession
+from src.services.learning_pipeline import build_learning_pipeline
 
 
 analysis_bp = Blueprint("analysis", __name__)
@@ -294,6 +295,17 @@ def analyze_document():
             for ex in exercises
         )
 
+        try:
+            user_id = int(get_jwt_identity())
+        except (ValueError, TypeError, Exception):
+            user_id = 0
+
+        pipeline_data = build_learning_pipeline(
+            user_id=user_id,
+            subject_id=0,
+            document_text=analysis_result["extracted_text"]
+        )
+
         response = {
             "status": "success",
             "file_info": file_info,
@@ -330,6 +342,7 @@ def analyze_document():
                     1, total_study_time // (7 * 60)
                 ),  # Basé sur 1h/jour
             },
+            "pipeline": pipeline_data,
             "timestamp": datetime.now().isoformat(),
         }
 
