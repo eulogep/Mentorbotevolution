@@ -77,7 +77,7 @@ def extract_text_from_pdf(file_storage, max_ocr_pages=3):
         return DocumentExtractionResult(
             text="",
             method="pdf_error",
-            fallback_reason=str(exc),
+            fallback_reason="PDF extraction failed due to an internal error",
         )
 
 
@@ -87,8 +87,15 @@ def extract_text_from_document(file_storage):
     extension = os.path.splitext(filename.lower())[1]
 
     if content_type.startswith("image/"):
+        ocr_text = extract_text_from_image(file_storage).strip()
+        if ocr_text.startswith("[OCR Failed:"):
+            return DocumentExtractionResult(
+                text="",
+                method="image_ocr_failed",
+                fallback_reason="OCR extraction failed",
+            )
         return DocumentExtractionResult(
-            text=extract_text_from_image(file_storage).strip(),
+            text=ocr_text,
             method="image_ocr",
         )
 

@@ -255,10 +255,12 @@ def analyze_document():
                     }
                 )
 
+            used_fallback = False
             if not enriched_concepts:
                 enriched_concepts = generate_simulated_toeic_analysis_fallback(
                     "concept_fallback"
                 )["concepts"]
+                used_fallback = True
 
             analysis_result = {
                 "extracted_text": extracted_text,
@@ -266,7 +268,7 @@ def analyze_document():
                 "word_count": len(extracted_text.split()),
                 "reading_level": analyze_sentiment(extracted_text),
                 "estimated_study_time": max(5, len(extracted_text.split()) // 50),
-                "is_simulated": False,
+                "is_simulated": used_fallback,
             }
         else:
             analysis_result = generate_simulated_toeic_analysis_fallback(

@@ -79,7 +79,7 @@ Creer un fichier `.env` local:
 ```env
 SECRET_KEY=dev-secret-change-me
 JWT_SECRET_KEY=dev-jwt-secret-change-me
-DATABASE_URL=sqlite:///database/app.db
+# DATABASE_URL=sqlite:///database/app.db  # Optional: defaults to sqlite:///database/app.db if not set
 ```
 
 Pour PostgreSQL:
