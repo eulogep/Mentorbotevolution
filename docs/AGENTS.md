@@ -56,3 +56,22 @@ Before implementation:
 - do not expand the task scope
 ```
 
+---
+
+## 🔒 Git Safety Rule
+
+Agents must never push directly to `main` unless the user explicitly asks for it.
+
+Default workflow:
+
+1. `git checkout main`
+2. `git pull origin main`
+3. `git checkout -b <type>/<short-task-name>`
+4. Make scoped changes
+5. Run validation commands
+6. Commit
+7. Push the branch
+8. Open a PR
+
+Every task must have one clear branch and one clear PR objective.
+

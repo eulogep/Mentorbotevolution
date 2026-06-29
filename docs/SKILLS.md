@@ -16,6 +16,17 @@ This project uses agent skills to reduce repeated reasoning, improve consistency
 
 ## Local Skill Locations
 
+L'agent doit impérativement vérifier les chemins réellement existants sur la machine hôte avant de tenter de les utiliser.
+
+### Windows / Antigravity
+
+- `%USERPROFILE%\.agents\skills`
+- `%USERPROFILE%\.antigravity\skills`
+- `<workspace>\.agents\skills`
+- `<workspace>\docs\skills` if project-local skills are documented
+
+### Linux / WSL
+
 - `/home/euloge/.agents/skills`
 - `/media/recoveryusb/skills`
 
