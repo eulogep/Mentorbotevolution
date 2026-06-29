@@ -103,3 +103,5 @@ Le pipeline d'apprentissage structure le flux d'analyse de documents et de gén�
 
 Le pipeline est coordonné par le service central `src/services/learning_pipeline.py` et exposé via le champ `pipeline` dans la route d'analyse `/api/analysis/analyze-document`.
 
+Une fois le pipeline généré et affiché, l'utilisateur a la possibilité de persister ces cartes d'études via le service `src/services/pipeline_flashcard_import.py` (exposé par la route `/api/spaced-repetition/import-pipeline-flashcards`). Ce service crée automatiquement la matière (`Subject`) et les concepts (`Concept`) associés, puis crée les cartes mémoire (`Card`) sans nécessiter de changements structurels en base de données.
+
