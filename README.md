@@ -1,140 +1,159 @@
-<div align="center">
+# MentorBot Evolution
 
-# 🧠 MentorBot Evolution
+Plateforme d'apprentissage TOEIC avec frontend React/Vite et backend Flask.
 
-### Plateforme d'Apprentissage Augmentée par l'IA
+Le projet est stabilise progressivement. Il garde l'architecture actuelle:
+React/Vite cote client, Flask + SQLAlchemy cote API, SQLite en local et
+PostgreSQL possible via `DATABASE_URL`.
 
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-2.3+-000000?style=for-the-badge&logo=flask&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-4.4+-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.3+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
-[![Vercel Deployment](https://deploy-badge.vercel.app/vercel/mentorbotevolution)](https://mentorbotevolution.vercel.app)
+## Fonctionnalites disponibles
 
-<p align="center">
-  Une approche <b>neuroscientifique</b> de la préparation au TOEIC.<br>
-  Analyse de documents par OCR, Plans d'études adaptatifs et Répétition Espacée.
-</p>
+- Authentification utilisateur avec inscription, connexion et JWT.
+- Backend Flask expose sous `/api`.
+- Modeles SQLAlchemy pour utilisateurs, sujets, concepts, flashcards et sessions d'etude.
+- Plans de maitrise TOEIC basiques.
+- Repetition espacee avec cartes persistantes et algorithme SM-2 simplifie.
+- Analyse de documents:
+  - texte brut;
+  - images via OCR Tesseract;
+  - PDF avec extraction de texte PyMuPDF;
+  - OCR de secours pour PDF scannes quand aucun texte embarque n'est trouve.
+- Frontend React/Vite avec dashboard, upload de documents et vues de repetition espacee.
 
-[Fonctionnalités](#-fonctionnalités-clés) •
-[Installation](#-installation) •
-[API](#-api) •
-[Contribuer](#-contribuer) •
-[Démo Live 🚀](https://mentorbotevolution.vercel.app)
+## Fonctionnalites partiellement implementees
 
-</div>
+- L'analyse NLP reste heuristique: extraction de mots/concepts par frequence et regex.
+- Les recommandations d'apprentissage sont encore simples et parfois statiques.
+- Certains fallbacks generent des concepts TOEIC simules quand aucun texte exploitable
+  n'est extrait. Ces reponses sont marquees par `is_simulated: true`.
+- La persistance sur Vercel peut fonctionner avec SQLite dans `/tmp`, mais ce stockage
+  est ephemere et ne convient pas a une vraie production.
 
----
+## Fonctionnalites prevues
 
-## 🚀 Présentation
+- Brancher une base PostgreSQL geree en production via `DATABASE_URL`.
+- Ajouter de vraies migrations de schema.
+- Remplacer progressivement les heuristiques NLP par une analyse plus robuste.
+- Ameliorer les tests d'integration frontend/backend.
+- Ajouter un suivi de progression plus precis et moins statique.
 
-**MentorBot Evolution** n'est pas juste une autre application de quiz. C'est un **coach personnel intelligent** qui s'adapte à votre façon d'apprendre.
+## Limites connues
 
-En combinant la puissance de l'IA (**OCR Tesseract, NLP**) avec les principes de la **courbe de l'oubli (Ebbinghaus)**, la plateforme optimise chaque minute de votre temps de révision pour maximiser la rétention à long terme.
+- Pas de migration vers FastAPI prevue a court terme.
+- Pas de Kubernetes, Terraform, Vault, Redis, S3 ou file cloud queue dans cette phase.
+- L'OCR depend d'une installation Tesseract disponible sur la machine ou l'environnement.
+- Les fichiers DOCX ne sont pas encore extraits reellement.
+- Les tests historiques dans `tests/backend_test.py` ciblent un serveur HTTP lance a part;
+  les tests pytest modernes sont dans `tests/test_backend_flask.py`.
 
-## ✨ Fonctionnalités Clés
+## Prerequis
 
-| Fonctionnalité | Description | Technologie |
-| :--- | :--- | :--- |
-| **🔐 Auth Sécurisée** | Inscription/Connexion robuste avec JWT et hachage. | `Flask-JWT`, `Werkzeug` |
-| **👁️ Analyse Documents** | Extraction de texte et concepts depuis PDF/Images/Texte. | `Tesseract OCR`, `Regex/NLP` |
-| **📊 Dashboard** | Suivi visuel de la progression et des métriques d'étude. | `Recharts`, `Radix UI` |
-| **🧠 Apprentissage Adaptatif** | Plans générés selon votre chronotype et style d'apprentissage. | `Algorithme SM-2` |
-| **🔁 Répétition Espacée** | Système de flashcards intelligent qui prédit quand réviser. | `Python Backend` |
+- Node.js 18 ou plus recent.
+- Python 3.11 recommande.
+- Tesseract OCR pour l'analyse d'images et le fallback OCR des PDF scannes.
+- PostgreSQL optionnel pour un environnement proche production.
 
-## 🛠️ Stack Technique
-
-**Frontend**
-
-- **Framework**: React 18 + Vite
-- **UI/UX**: TailwindCSS, Shadcn/Radix UI, Lucide Icons
-- **State**: Context API (Auth), Axios (API)
-
-**Backend**
-
-- **Core**: Python 3.11, Flask
-- **Sécurité**: JWT-Extended, Werkzeug Security
-- **Data**: SQLAlchemy (ORM), SQLite (Dev) / PostgreSQL (Prod)
-- **AI**: Pytesseract, Pillow
-
-## 📂 Structure du Projet
-
-```bash
-mentorbotevolution-main/
-├── 📂 src/                  # ⚛️ Frontend React
-│   ├── 🧩 components/       # Composants UI modulaires
-│   ├── 🔐 context/          # Gestion d'état (Auth)
-│   ├── 🚦 routes/           # Pages (Login, Dashboard...)
-│   └── 🛠️ utils/            # Helpers
-├── 📂 src/routes/           # 🐍 Blueprints Backend API
-├── 📂 src/models/           # 🗄️ Modèles de BDD
-├── 📂 src/utils/            # 🧠 Modules IA (OCR, NLP)
-├── 📄 main.py               # Point d'entrée Flask
-├── 📄 package.json          # Dépendances Node
-└── 📄 requirements.txt      # Dépendances Python
-```
-
-## ⚡ Installation Rapide
-
-### Prérequis
-
-- Node.js (v18+)
-- Python (v3.10+)
-- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) (Installé et dans le PATH)
-
-### 1. Clonage & Setup
-
-```bash
-git clone https://github.com/eulogep/mentorbotevolution.git
-cd mentorbotevolution
-```
-
-### 2. Backend (Terminal A)
-
-```bash
-# Setup environnement virtuel
-python -m venv venv
-# Windows: venv\Scripts\activate  |  Mac/Linux: source venv/bin/activate
-
-# Installation deps
-pip install -r requirements.txt
-
-# Création fichier .env
-echo "SECRET_KEY=dev-secret" > .env
-echo "JWT_SECRET_KEY=dev-jwt-secret" >> .env
-echo "DATABASE_URL=sqlite:///app.db" >> .env
-
-# Lancement
-python main.py
-```
-
-### 3. Frontend (Terminal B)
+## Installation locale
 
 ```bash
 npm install
+python -m venv .venv
+```
+
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+Creer un fichier `.env` local:
+
+```env
+SECRET_KEY=dev-secret-change-me
+JWT_SECRET_KEY=dev-jwt-secret-change-me
+DATABASE_URL=sqlite:///database/app.db
+```
+
+Pour PostgreSQL:
+
+```env
+DATABASE_URL=postgresql://user:password@host:5432/mentorbot
+```
+
+## Lancement
+
+Backend Flask:
+
+```bash
+python main.py
+```
+
+Frontend Vite:
+
+```bash
 npm run dev
 ```
 
-🚀 **Ouvrez** `http://localhost:3000` pour commencer !
+Build frontend:
 
-## 🔌 API Endpoints
+```bash
+npm run build
+```
 
-L'API est accessible via `/api`. Les endpoints protégés nécessitent un header `Authorization: Bearer <token>`.
+Lint frontend:
 
-- **Auth**: `POST /auth/register`, `POST /auth/login`
-- **Analysis**: `POST /analysis/analyze-document` (Multipart File)
-- **Mastery**: `GET /mastery/subjects`
-- **Spaced Repetition**: `GET /spaced-repetition/get-due-cards`
+```bash
+npm run lint
+```
 
-## 🌍 Déploiement
+## Tests
 
-Le projet est déployé en production sur Vercel.
+Tests Flask rapides:
 
-- **URL de Production** : [https://mentorbotevolution.vercel.app](https://mentorbotevolution.vercel.app)
-- **Statut** : ✅ En ligne
+```bash
+python -m pytest tests/test_backend_flask.py -q
+```
 
----
-<div align="center">
-  <p>Fait avec ❤️ par <a href="https://github.com/eulogep">MABIALA EULOGE</a></p>
-</div>
+Compilation Python:
+
+```bash
+python -m compileall main.py src api backend tests
+```
+
+Audit npm:
+
+```bash
+npm audit --audit-level=moderate
+```
+
+## API principale
+
+- `POST /api/user/register`
+- `POST /api/user/login`
+- `GET /api/health`
+- `POST /api/analysis/analyze-document`
+- `POST /api/analysis/generate-plan`
+- `POST /api/analysis/update-progress`
+- `POST /api/spaced-repetition/create-card`
+- `POST /api/spaced-repetition/review-card`
+- `GET /api/spaced-repetition/get-due-cards`
+- `GET /api/spaced-repetition/get-schedule`
+- `GET /api/learning/progress`
+- `GET /api/mastery/get-subjects`
+
+## Deploiement
+
+Le fichier `vercel.json` conserve un deploiement Vite + fonction Python Flask via
+`api/index.py`.
+
+Pour une production durable, configurer `DATABASE_URL` vers PostgreSQL. Sans cette
+variable, Vercel retombe sur SQLite dans `/tmp`, ce qui est uniquement un fallback
+temporaire.

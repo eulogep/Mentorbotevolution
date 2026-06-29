@@ -11,17 +11,16 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import random
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from src.utils.ocr import extract_text_from_image
+from src.utils.document_extraction import extract_text_from_document
 from src.utils.nlp import extract_concepts, analyze_sentiment
-from src.models.user import db, Subject, Concept, Card
+from src.models.user import db, Subject, Concept, Card, StudySession
 
 
 analysis_bp = Blueprint("analysis", __name__)
 
 
-# Simulation d'analyse OCR et NLP
-def simulate_ocr_analysis(file_content, file_type):
-    """Simule l'analyse OCR d'un document"""
+def generate_simulated_toeic_analysis_fallback(file_type):
+    """Fallback clearly marked as simulated TOEIC analysis when extraction finds no text."""
 
     # Concepts TOEIC typiques pour la simulation
     toeic_concepts = [
@@ -86,11 +85,12 @@ def simulate_ocr_analysis(file_content, file_type):
     selected_concepts = random.sample(toeic_concepts, num_concepts)
 
     return {
-        "extracted_text": f"Contenu simulé extrait du fichier {file_type}...",
+        "extracted_text": f"Fallback simulé: aucun texte exploitable extrait du fichier {file_type}.",
         "concepts": selected_concepts,
         "word_count": random.randint(500, 2000),
         "reading_level": random.choice(["intermediate", "advanced", "expert"]),
         "estimated_study_time": random.randint(30, 180),  # minutes
+        "is_simulated": True,
     }
 
 
@@ -236,28 +236,12 @@ def analyze_document():
         }
         file.seek(0)  # Reset file pointer
 
-        # Real Analysis
-        extracted_text = ""
+        extraction = extract_text_from_document(file)
+        extracted_text = extraction.text.strip()
 
-        if file.content_type.startswith("image/"):
-            extracted_text = extract_text_from_image(file)
-        elif file.content_type == "text/plain":
-            extracted_text = file.read().decode("utf-8", errors="ignore")
-        else:
-            # Fallback for PDF/Docx (using simulation for non-supported types for now)
-            file_content = file.read()
-            sim_result = simulate_ocr_analysis(file_content, file_info["type"])
-            extracted_text = sim_result["extracted_text"]
-            analysis_result = sim_result  # Use full simulation result
-
-        # NLP Analysis if we have real text (and not just simulation)
-        if file.content_type.startswith("image/") or file.content_type == "text/plain":
-            if not extracted_text.strip():
-                extracted_text = "No readable text found in document."
-
+        if extracted_text:
             raw_concepts = extract_concepts(extracted_text)
 
-            # Enrich concepts with defaults for compatibility
             enriched_concepts = []
             for c in raw_concepts:
                 enriched_concepts.append(
@@ -271,9 +255,10 @@ def analyze_document():
                     }
                 )
 
-            # If NLP failed to find concepts, fallback to some defaults
             if not enriched_concepts:
-                enriched_concepts = simulate_ocr_analysis(None, "fallback")["concepts"]
+                enriched_concepts = generate_simulated_toeic_analysis_fallback(
+                    "concept_fallback"
+                )["concepts"]
 
             analysis_result = {
                 "extracted_text": extracted_text,
@@ -281,7 +266,13 @@ def analyze_document():
                 "word_count": len(extracted_text.split()),
                 "reading_level": analyze_sentiment(extracted_text),
                 "estimated_study_time": max(5, len(extracted_text.split()) // 50),
+                "is_simulated": False,
             }
+        else:
+            analysis_result = generate_simulated_toeic_analysis_fallback(
+                file_info["type"] or file.filename
+            )
+            analysis_result["fallback_reason"] = extraction.fallback_reason
 
         # Génération d'exercices
         exercises = generate_exercises(analysis_result["concepts"])
@@ -313,6 +304,9 @@ def analyze_document():
                 "word_count": analysis_result["word_count"],
                 "reading_level": analysis_result["reading_level"],
                 "estimated_study_time": analysis_result["estimated_study_time"],
+                "extraction_method": extraction.method,
+                "fallback_reason": analysis_result.get("fallback_reason"),
+                "is_simulated": analysis_result.get("is_simulated", False),
             },
             "generated_content": {
                 "exercises": exercises,

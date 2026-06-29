@@ -33,6 +33,24 @@ from src.routes.spaced_repetition import spaced_repetition_bp  # noqa: E402
 # Load environment variables from .env file
 load_dotenv()
 
+
+def get_database_uri():
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        if database_url.startswith("postgres://"):
+            return database_url.replace("postgres://", "postgresql://", 1)
+        return database_url
+
+    if os.environ.get("VERCEL"):
+        logging.warning(
+            "DATABASE_URL is not set on Vercel; falling back to ephemeral SQLite in /tmp."
+        )
+        return "sqlite:////tmp/app.db"
+
+    db_dir = os.path.join(os.path.dirname(__file__), "database")
+    os.makedirs(db_dir, exist_ok=True)
+    return f"sqlite:///{os.path.join(db_dir, 'app.db')}"
+
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "default-dev-key-please-change")
 app.config["JWT_SECRET_KEY"] = os.environ.get(
@@ -58,19 +76,11 @@ app.register_blueprint(mastery_bp, url_prefix="/api/mastery")
 app.register_blueprint(analysis_bp, url_prefix="/api/analysis")
 app.register_blueprint(spaced_repetition_bp, url_prefix="/api/spaced-repetition")
 
-# Configuration base de données SQLite (compatible Vercel serverless)
-# - En prod Vercel, utiliser /tmp (writable)
-# - En local, utiliser ./database/app.db
-use_db_uri = os.environ.get("DATABASE_URL")
-if not use_db_uri:
-    if os.environ.get("VERCEL"):
-        tmp_dir = "/tmp"
-        use_db_uri = f"sqlite:///{os.path.join(tmp_dir, 'app.db')}"
-    else:
-        db_dir = os.path.join(os.path.dirname(__file__), "database")
-        os.makedirs(db_dir, exist_ok=True)
-        use_db_uri = f"sqlite:///{os.path.join(db_dir, 'app.db')}"
-app.config["SQLALCHEMY_DATABASE_URI"] = use_db_uri
+# Database configuration:
+# - DATABASE_URL is preferred for PostgreSQL production deployments.
+# - SQLite is kept as a local development fallback.
+# - Vercel without DATABASE_URL uses ephemeral /tmp SQLite only as a temporary fallback.
+app.config["SQLALCHEMY_DATABASE_URI"] = get_database_uri()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Initialisation DB (création des tables si nécessaire)
