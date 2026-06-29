@@ -20,7 +20,7 @@ euloge-learning-platform/
 - `AUTHOR`: MABIALA EULOGE
 - `PROJECT_NAME`: Euloge Learning Platform
 - `DATABASE_URL`: URL de la base de données
-- `PYTHON_VERSION`: 3.11
+- `PYTHON_VERSION`: 3.12
 
 ### 3. Étapes de Déploiement
 
