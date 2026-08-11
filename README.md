@@ -10,6 +10,7 @@ Le projet conserve une architecture React/Vite côté client et Flask/SQLAlchemy
 |---|---|
 | Authentification par inscription, connexion et JWT | Disponible |
 | Catalogue de parcours explicites | Disponible : TOEIC, informatique, Excel, Power BI, réseau, cybersécurité et parcours libre |
+| Parcours « Préparation TOEIC » | Disponible avec un socle original de 36 cartes de vocabulaire professionnel, immédiatement planifiées dans le domaine Langues |
 | Parcours « Fondamentaux de l’informatique » | Disponible avec cinq notions initiales : données, algorithmique, systèmes, réseau et hygiène numérique |
 | Sujets, notions et critères de preuve | Persistés et génériques par domaine |
 | Cartes et répétition espacée FSRS | Disponibles, avec journal de revue et rétention cible configurable |
@@ -35,7 +36,7 @@ Le projet ne personnalise pas les contenus à partir de « styles d’apprentiss
 | Activité | Rappel, auto-explication, exercice pratique, diagnostic ou production ; les activités pratiques seront enrichies progressivement |
 | Preuve | Résultat observable d’une activité ; les cartes FSRS seules ne sont pas une certification |
 
-La documentation détaillée se trouve dans [l’architecture multi-domaines](docs/ARCHITECTURE_MULTI_DOMAINES_2026-08-11.md), [l’audit de généralisation](docs/AUDIT_GENERALISATION_MULTI_DOMAINES_2026-08-11.md) et les [notes de recherche](docs/RECHERCHE_MULTI_DOMAINES_2026-08-11.md).
+La documentation détaillée se trouve dans [l’architecture multi-domaines](docs/ARCHITECTURE_MULTI_DOMAINES_2026-08-11.md), [l’audit de généralisation](docs/AUDIT_GENERALISATION_MULTI_DOMAINES_2026-08-11.md), les [notes de recherche](docs/RECHERCHE_MULTI_DOMAINES_2026-08-11.md) et le [socle TOEIC initial](docs/PARCOURS_TOEIC_FONDATIONS.md).
 
 ## Limites actuelles et prochaines étapes
 

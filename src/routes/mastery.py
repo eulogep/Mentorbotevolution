@@ -1,11 +1,12 @@
 """Routes des parcours de maîtrise multi-domaines."""
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from src.models.user import Concept, Subject, db
+from src.content.toeic_foundations import get_starter_pack
+from src.models.user import Card, Concept, Subject, db
 from src.services.domain_catalog import DOMAIN_OPTIONS, find_template, public_catalog
 
 mastery_bp = Blueprint("mastery", __name__)
@@ -32,12 +33,13 @@ def _parse_weekly_hours(value):
     return hours
 
 
-def _create_path(user_id: int, data: dict) -> Subject:
-    """Create a path chosen by the user, optionally from a transparent template."""
+def _create_path(user_id: int, data: dict) -> tuple[Subject, dict | None]:
+    """Create a user-selected path and its optional transparent starter pack."""
     template_id = data.get("template_id")
     template = find_template(template_id) if template_id else None
     if template_id and not template:
         raise ValueError("Unknown learning path template")
+    starter_pack = get_starter_pack(template_id) if template else None
 
     if template:
         name = template["title"]
@@ -101,8 +103,24 @@ def _create_path(user_id: int, data: dict) -> Subject:
             evidence_criterion=concept.get("evidence_criterion", ""),
         ))
 
+    if starter_pack:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        for card_data in starter_pack["cards"]:
+            db.session.add(Card(
+                user_id=user_id,
+                subject_id=subject.id,
+                learning_domain=starter_pack["learning_domain"],
+                concept_name=card_data["concept_name"],
+                front_content=card_data["question"],
+                back_content=card_data["answer"],
+                difficulty=card_data.get("difficulty", "medium"),
+                priority="normal",
+                tags=",".join(card_data.get("tags", [])),
+                next_review=now,
+            ))
+
     db.session.commit()
-    return subject
+    return subject, starter_pack
 
 
 @mastery_bp.route("/subjects", methods=["GET"])
@@ -147,8 +165,17 @@ def create_learning_path():
     """Create a free path or a user-selected editorial template."""
     try:
         user_id = int(get_jwt_identity())
-        subject = _create_path(user_id, request.get_json(silent=True) or {})
-        return jsonify({"status": "success", "subject": subject.to_dict()}), 201
+        subject, starter_pack = _create_path(user_id, request.get_json(silent=True) or {})
+        response = {"status": "success", "subject": subject.to_dict()}
+        if starter_pack:
+            response["starter_pack"] = {
+                "id": starter_pack["id"],
+                "title": starter_pack["title"],
+                "cards_created": len(starter_pack["cards"]),
+                "learning_domain": starter_pack["learning_domain"],
+                "disclaimer": "Jeu de départ éditorial : complétez-le avec vos propres contenus et une pratique variée.",
+            }
+        return jsonify(response), 201
     except ValueError as exc:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(exc)}), 400
@@ -164,7 +191,7 @@ def create_plan():
     try:
         user_id = int(get_jwt_identity())
         payload = request.get_json(silent=True) or {}
-        subject = _create_path(user_id, {
+        subject, _ = _create_path(user_id, {
             "name": payload.get("subject", payload.get("name", "")),
             "description": payload.get("description", ""),
             "domain": payload.get("domain", "general"),
