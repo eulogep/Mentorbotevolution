@@ -62,3 +62,4 @@ Skills must not be used to:
 | find-skills | vercel-labs/skills | Find relevant skills | Optional | Use only when needed |
 | z-schema validating-json-data | zaggino/z-schema | JSON/schema validation | Candidate | Use later for schema validation |
 | playwright-test | posthog/posthog | Browser testing | Candidate | Use later for frontend flow tests |
+| webdev-readme-static | Manus | Bonnes pratiques React/Tailwind, accessibilité et vérification d’interface | Utilisée | Refonte de la boucle de rappel et contrôle visuel local, sans migration de framework. |

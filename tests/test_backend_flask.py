@@ -187,6 +187,14 @@ def test_create_and_review_spaced_repetition_card(client, auth_headers):
     assert body["next_review_in_days"] >= 1
     assert body["updated_card"]["review_count"] == 1
     assert body["updated_card"]["interval"] == body["next_review_in_days"]
+    assert body["updated_card"]["scheduler_type"] == "fsrs"
+    assert body["rating"] == "good"
+
+    with app.app_context():
+        from src.models.user import ReviewLog
+        review_log = ReviewLog.query.one()
+        assert review_log.rating == "good"
+        assert review_log.scheduled_days == body["next_review_in_days"]
 
 
 def test_update_progress_creates_study_session(client, auth_headers):

@@ -20,11 +20,14 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Compromis explicite entre rétention visée et volume quotidien de révisions.
+    desired_retention = db.Column(db.Float, default=0.90)
 
     # Relationships
     cards = db.relationship("Card", backref="owner", lazy=True)
     subjects = db.relationship("Subject", backref="owner", lazy=True)
     study_sessions = db.relationship("StudySession", backref="owner", lazy=True)
+    review_logs = db.relationship("ReviewLog", backref="owner", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -113,10 +116,17 @@ class Card(db.Model):
     success_count = db.Column(db.Integer, default=0)
     total_response_time = db.Column(db.Float, default=0.0)  # Cumulative seconds
 
+    # État du planificateur (FSRS). Les champs SM-2 précédents restent présents
+    # pour une migration progressive et la rétrocompatibilité des cartes existantes.
+    scheduler_type = db.Column(db.String(30), default="sm2")
+    scheduler_state = db.Column(db.Text, default="")
+    scheduler_version = db.Column(db.String(30), default="legacy")
+
     # Scheduling
     last_reviewed = db.Column(db.DateTime, nullable=True)
     next_review = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    review_logs = db.relationship("ReviewLog", backref="card", lazy=True, cascade="all, delete-orphan")
 
     @property
     def success_rate(self):
@@ -155,6 +165,8 @@ class Card(db.Model):
             "review_count": self.review_count,
             "success_rate": round(self.success_rate, 3),
             "average_response_time": round(self.average_response_time, 1),
+            "scheduler_type": self.scheduler_type,
+            "scheduler_version": self.scheduler_version,
             "last_reviewed": self.last_reviewed.isoformat() if self.last_reviewed else None,
             "next_review": self.next_review.isoformat() if self.next_review else None,
             "days_overdue": self.days_overdue,
@@ -163,6 +175,35 @@ class Card(db.Model):
 
     def __repr__(self):
         return f"<Card {self.concept_name}>"
+
+
+class ReviewLog(db.Model):
+    """Immutable audit trail for one spaced-repetition review."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    card_id = db.Column(db.Integer, db.ForeignKey("card.id"), nullable=False, index=True)
+    rating = db.Column(db.String(12), nullable=False)  # again, hard, good, easy
+    response_time = db.Column(db.Float, default=0.0)
+    retrievability_before = db.Column(db.Float, nullable=True)
+    scheduled_days = db.Column(db.Integer, default=0)
+    scheduler_version = db.Column(db.String(30), default="fsrs-6")
+    previous_state = db.Column(db.Text, default="")
+    review_log = db.Column(db.Text, default="")
+    next_state = db.Column(db.Text, default="")
+    reviewed_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "card_id": self.card_id,
+            "rating": self.rating,
+            "response_time": self.response_time,
+            "retrievability_before": self.retrievability_before,
+            "scheduled_days": self.scheduled_days,
+            "scheduler_version": self.scheduler_version,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+        }
 
 
 class StudySession(db.Model):
