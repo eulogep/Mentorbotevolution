@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { BarChart3, BookOpen, BrainCircuit, CheckCircle, Clock3, FileUp, ListChecks, Sparkles, Target } from 'lucide-react';
+import { BarChart3, BookOpen, BrainCircuit, CheckCircle, ClipboardCheck, Clock3, FileUp, ListChecks, Sparkles, Target } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -10,6 +10,7 @@ import ValidationChecklist from './ValidationChecklist';
 import SpacedReview from './SpacedReview';
 import SpacedAnalytics from './SpacedAnalytics';
 import AdaptiveLearning from './AdaptiveLearning';
+import ToeicReadingDiagnostic from './ToeicReadingDiagnostic';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const MasteryDashboard = () => {
@@ -99,10 +100,11 @@ const MasteryDashboard = () => {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 md:grid-cols-7">
+      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 md:grid-cols-8">
         <TabsTrigger value="overview" className="text-xs sm:text-sm"><BookOpen className="mr-1.5 h-4 w-4" />Aujourd’hui</TabsTrigger>
         <TabsTrigger value="upload" className="text-xs sm:text-sm"><FileUp className="mr-1.5 h-4 w-4" />Importer</TabsTrigger>
         <TabsTrigger value="generator" className="text-xs sm:text-sm"><Target className="mr-1.5 h-4 w-4" />Parcours</TabsTrigger>
+        <TabsTrigger value="diagnostic" className="text-xs sm:text-sm"><ClipboardCheck className="mr-1.5 h-4 w-4" />Diagnostiquer</TabsTrigger>
         <TabsTrigger value="validation" className="text-xs sm:text-sm"><CheckCircle className="mr-1.5 h-4 w-4" />Expliquer</TabsTrigger>
         <TabsTrigger value="spaced" className="text-xs sm:text-sm"><Sparkles className="mr-1.5 h-4 w-4" />Réviser</TabsTrigger>
         <TabsTrigger value="adaptive" className="text-xs sm:text-sm"><BrainCircuit className="mr-1.5 h-4 w-4" />Adapter</TabsTrigger>
@@ -112,6 +114,7 @@ const MasteryDashboard = () => {
       <TabsContent value="overview" className="mt-6">{renderOverview()}</TabsContent>
       <TabsContent value="upload" className="mt-6"><DocumentUploader onUploadComplete={handleUploadComplete} /></TabsContent>
       <TabsContent value="generator" className="mt-6"><PlanGenerator analyzedDocuments={analyzedDocs} onPlanGenerated={refreshDashboard} /></TabsContent>
+      <TabsContent value="diagnostic" className="mt-6"><ToeicReadingDiagnostic onRemediationCreated={refreshDashboard} /></TabsContent>
       <TabsContent value="validation" className="mt-6 space-y-4">
         {concepts.length ? <><Card className="border-slate-200 shadow-sm"><CardContent className="p-4"><label htmlFor="concept-select" className="mb-2 block text-sm font-semibold text-slate-800">Notion à expliquer</label><select id="concept-select" value={selectedConceptId} onChange={(event) => setSelectedConceptId(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600">{concepts.map((concept) => <option key={concept.id} value={concept.id}>{concept.subjectName} — {concept.name}</option>)}</select></CardContent></Card>{selectedConcept && <ValidationChecklist concept={selectedConcept} onValidationComplete={refreshDashboard} />}</> : <Card><CardContent className="p-6 text-sm text-slate-600">Créez d’abord une matière et une notion pour démarrer une auto-explication.</CardContent></Card>}
       </TabsContent>

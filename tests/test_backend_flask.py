@@ -12,6 +12,7 @@ os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-with-enough-length-for-hs256"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from main import app, get_database_uri, should_auto_create_tables  # noqa: E402
+from src.content.toeic_reading_diagnostic import get_diagnostic_item  # noqa: E402
 from src.models.user import Card, Concept, StudySession, Subject, db  # noqa: E402
 from src.utils import document_extraction  # noqa: E402
 
@@ -394,3 +395,81 @@ def test_adaptive_profiles_filter_sessions_and_apply_domain_retention(client, au
     assert language_overview["cards_total"] == 1
     assert language_overview["desired_retention"] == 0.93
     assert language_overview["retention_source"] == "domain_profile"
+
+
+def test_toeic_reading_diagnostic_records_results_and_creates_remediation(client, auth_headers):
+    path_response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={
+            "name": "Diagnostic lecture TOEIC",
+            "domain": "language",
+            "description": "Parcours de contrôle du diagnostic original.",
+            "objective_type": "competency",
+            "objective_label": "Lire des documents professionnels.",
+        },
+    )
+    assert path_response.status_code == 201
+    subject_id = path_response.get_json()["subject"]["id"]
+
+    start_response = client.post(
+        "/api/diagnostic/toeic-reading/start",
+        headers=auth_headers,
+        json={"subject_id": subject_id},
+    )
+    assert start_response.status_code == 201
+    start_payload = start_response.get_json()
+    assert start_payload["diagnostic"]["id"] == "toeic-reading-diagnostic-v1"
+    assert len(start_payload["items"]) == 19
+    assert "correct_index" not in start_payload["items"][0]
+    assert "explanation" not in start_payload["items"][0]
+
+    responses = []
+    for public_item in start_payload["items"]:
+        item = get_diagnostic_item(public_item["id"])
+        selected_index = item["correct_index"]
+        if item["target"] == "grammar":
+            selected_index = (selected_index + 1) % len(item["choices"])
+        responses.append({
+            "item_id": item["id"],
+            "selected_index": selected_index,
+            "response_time_seconds": 5,
+            "confidence": 2,
+        })
+
+    submit_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/submit",
+        headers=auth_headers,
+        json={"responses": responses, "duration_seconds": 180},
+    )
+    assert submit_response.status_code == 200
+    submitted = submit_response.get_json()
+    assert submitted["attempt"]["status"] == "completed"
+    assert submitted["attempt"]["total_items"] == 19
+    assert submitted["attempt"]["correct_count"] == 14
+    grammar_recommendation = next(
+        item for item in submitted["analysis"]["recommendations"] if item["target"] == "grammar"
+    )
+    assert grammar_recommendation["code"] == "create_remediation"
+    assert "score TOEIC" in submitted["disclaimer"]
+
+    remediation_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/create-remediation",
+        headers=auth_headers,
+        json={"targets": ["grammar"]},
+    )
+    assert remediation_response.status_code == 201
+    remediation = remediation_response.get_json()
+    assert remediation["created_count"] == 5
+    assert {card["learning_domain"] for card in remediation["cards"]} == {"language"}
+    assert all("diagnostic" in card["tags"] for card in remediation["cards"])
+    assert Card.query.filter_by(subject_id=subject_id).count() == 5
+
+    duplicate_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/create-remediation",
+        headers=auth_headers,
+        json={"targets": ["grammar"]},
+    )
+    assert duplicate_response.status_code == 201
+    assert duplicate_response.get_json()["created_count"] == 0
+    assert duplicate_response.get_json()["skipped_count"] == 5

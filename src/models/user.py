@@ -29,6 +29,7 @@ class User(db.Model):
     study_sessions = db.relationship("StudySession", backref="owner", lazy=True)
     review_logs = db.relationship("ReviewLog", backref="owner", lazy=True, cascade="all, delete-orphan")
     adaptive_profiles = db.relationship("AdaptiveLearningProfile", backref="owner", lazy=True, cascade="all, delete-orphan")
+    diagnostic_attempts = db.relationship("DiagnosticAttempt", backref="owner", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -86,6 +87,7 @@ class Subject(db.Model):
     # Relationships
     cards = db.relationship("Card", backref="subject", lazy=True)
     concepts = db.relationship("Concept", backref="subject", lazy=True, cascade="all, delete-orphan")
+    diagnostic_attempts = db.relationship("DiagnosticAttempt", backref="subject", lazy=True)
 
     def to_dict(self):
         return {
@@ -252,6 +254,72 @@ class ReviewLog(db.Model):
             "scheduled_minutes": self.scheduled_minutes,
             "scheduler_version": self.scheduler_version,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+        }
+
+
+class DiagnosticAttempt(db.Model):
+    """One original, formative diagnostic attempt for a learner."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey("subject.id"), nullable=True, index=True)
+    diagnostic_id = db.Column(db.String(100), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default="in_progress")
+    total_items = db.Column(db.Integer, nullable=False, default=0)
+    correct_count = db.Column(db.Integer, nullable=False, default=0)
+    duration_seconds = db.Column(db.Float, nullable=True)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    responses = db.relationship("DiagnosticResponse", backref="attempt", lazy=True, cascade="all, delete-orphan")
+
+    @property
+    def accuracy(self):
+        if not self.total_items:
+            return None
+        return round(self.correct_count / self.total_items, 3)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "subject_id": self.subject_id,
+            "diagnostic_id": self.diagnostic_id,
+            "status": self.status,
+            "total_items": self.total_items,
+            "correct_count": self.correct_count,
+            "accuracy": self.accuracy,
+            "duration_seconds": self.duration_seconds,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
+class DiagnosticResponse(db.Model):
+    """An auditable response to one original diagnostic item."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    attempt_id = db.Column(db.Integer, db.ForeignKey("diagnostic_attempt.id"), nullable=False, index=True)
+    item_id = db.Column(db.String(100), nullable=False)
+    task_type = db.Column(db.String(50), nullable=False)
+    target = db.Column(db.String(50), nullable=False, index=True)
+    scenario = db.Column(db.String(100), nullable=False)
+    selected_index = db.Column(db.Integer, nullable=True)
+    is_correct = db.Column(db.Boolean, nullable=False)
+    response_time_seconds = db.Column(db.Float, nullable=True)
+    confidence = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "item_id": self.item_id,
+            "task_type": self.task_type,
+            "target": self.target,
+            "scenario": self.scenario,
+            "selected_index": self.selected_index,
+            "is_correct": self.is_correct,
+            "response_time_seconds": self.response_time_seconds,
+            "confidence": self.confidence,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 
