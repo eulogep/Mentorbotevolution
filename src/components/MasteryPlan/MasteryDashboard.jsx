@@ -65,17 +65,17 @@ const MasteryDashboard = () => {
     <div className="space-y-5">
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Erreur : {error}</div>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="border-slate-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">Matières actives</p><p className="mt-2 text-3xl font-bold text-slate-950">{loading ? '—' : subjects.length}</p></div><BookOpen className="h-5 w-5 text-indigo-700" /></div><p className="mt-3 text-xs text-slate-600">Créez un plan à partir d’un document ou d’un objectif TOEIC.</p></CardContent></Card>
+        <Card className="border-slate-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">Parcours actifs</p><p className="mt-2 text-3xl font-bold text-slate-950">{loading ? '—' : subjects.length}</p></div><BookOpen className="h-5 w-5 text-indigo-700" /></div><p className="mt-3 text-xs text-slate-600">Créez un parcours pour l’anglais, l’informatique ou toute autre compétence.</p></CardContent></Card>
         <Card className="border-slate-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">À revoir maintenant</p><p className="mt-2 text-3xl font-bold text-slate-950">{loading ? '—' : dueCount}</p></div><Clock3 className="h-5 w-5 text-emerald-700" /></div><p className="mt-3 text-xs text-slate-600">Ce total reflète les échéances enregistrées dans votre calendrier.</p><Button size="sm" className="mt-3 bg-emerald-700 hover:bg-emerald-800" onClick={() => setActiveTab('spaced')}>Démarrer la session</Button></CardContent></Card>
       </div>
 
       <Card className="border-slate-200 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ListChecks className="h-4 w-4 text-indigo-700" />Vos notions</CardTitle><CardDescription>Choisissez une notion réelle pour lancer une auto-explication guidée ou une pratique de rappel.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ListChecks className="h-4 w-4 text-indigo-700" />Vos compétences et notions</CardTitle><CardDescription>Choisissez une notion réelle pour lancer une auto-explication guidée ou une pratique de rappel.</CardDescription></CardHeader>
         <CardContent>
           {loading ? <p className="text-sm text-slate-500">Chargement de vos contenus…</p> : concepts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center"><p className="font-medium text-slate-800">Votre espace est prêt à être rempli.</p><p className="mt-1 text-sm text-slate-600">Importez un document ou créez un plan pour générer des notions et des cartes de révision.</p><Button className="mt-4" variant="outline" onClick={() => setActiveTab('upload')}><FileUp className="mr-2 h-4 w-4" />Importer un document</Button></div>
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center"><p className="font-medium text-slate-800">Votre espace est prêt à être structuré.</p><p className="mt-1 text-sm text-slate-600">Créez d’abord un parcours ou choisissez un modèle : TOEIC, informatique, Excel, Power BI, réseau ou cybersécurité.</p><Button className="mt-4" variant="outline" onClick={() => setActiveTab('generator')}><Target className="mr-2 h-4 w-4" />Créer un parcours</Button></div>
           ) : (
-            <div className="space-y-3">{concepts.map((concept) => <div key={concept.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-slate-900">{concept.name}</p><p className="mt-1 text-xs text-slate-500">{concept.subjectName} · Maîtrise déclarée : {concept.mastery || 0} %</p></div><Button size="sm" variant="outline" onClick={() => selectConceptForValidation(concept.id)}>Auto-expliquer</Button></div>)}</div>
+            <div className="space-y-3">{concepts.map((concept) => <div key={concept.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-slate-900">{concept.name}</p><p className="mt-1 text-xs text-slate-500">{concept.subjectName} · {concept.competency_type || 'knowledge'} · Progression : {concept.mastery || 0} %</p></div><Button size="sm" variant="outline" onClick={() => selectConceptForValidation(concept.id)}>Auto-expliquer</Button></div>)}</div>
           )}
         </CardContent>
       </Card>
@@ -87,7 +87,7 @@ const MasteryDashboard = () => {
       <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 md:grid-cols-6">
         <TabsTrigger value="overview" className="text-xs sm:text-sm"><BookOpen className="mr-1.5 h-4 w-4" />Aujourd’hui</TabsTrigger>
         <TabsTrigger value="upload" className="text-xs sm:text-sm"><FileUp className="mr-1.5 h-4 w-4" />Importer</TabsTrigger>
-        <TabsTrigger value="generator" className="text-xs sm:text-sm"><Target className="mr-1.5 h-4 w-4" />Plan</TabsTrigger>
+        <TabsTrigger value="generator" className="text-xs sm:text-sm"><Target className="mr-1.5 h-4 w-4" />Parcours</TabsTrigger>
         <TabsTrigger value="validation" className="text-xs sm:text-sm"><CheckCircle className="mr-1.5 h-4 w-4" />Expliquer</TabsTrigger>
         <TabsTrigger value="spaced" className="text-xs sm:text-sm"><Sparkles className="mr-1.5 h-4 w-4" />Réviser</TabsTrigger>
         <TabsTrigger value="analytics" className="text-xs sm:text-sm"><BarChart3 className="mr-1.5 h-4 w-4" />Données</TabsTrigger>

@@ -45,8 +45,16 @@ class Subject(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default="")
-    target_score = db.Column(db.Integer, default=800)
-    current_score = db.Column(db.Integer, default=0)
+    # Les scores sont conservés pour les parcours d’examen, mais ne servent pas
+    # à évaluer arbitrairement les parcours techniques ou professionnels.
+    target_score = db.Column(db.Integer, default=None, nullable=True)
+    current_score = db.Column(db.Integer, default=None, nullable=True)
+    domain = db.Column(db.String(50), default="general", nullable=False)
+    objective_type = db.Column(db.String(50), default="competency", nullable=False)
+    objective_label = db.Column(db.String(200), default="Compétence visée")
+    target_date = db.Column(db.Date, nullable=True)
+    weekly_hours = db.Column(db.Float, nullable=True)
+    source = db.Column(db.String(50), default="user_created", nullable=False)
     progress = db.Column(db.Float, default=0.0)  # 0.0 to 100.0
     status = db.Column(db.String(30), default="not_started")  # not_started, in_progress, mastered
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -63,6 +71,12 @@ class Subject(db.Model):
             "description": self.description,
             "target_score": self.target_score,
             "current_score": self.current_score,
+            "domain": self.domain,
+            "objective_type": self.objective_type,
+            "objective_label": self.objective_label,
+            "target_date": self.target_date.isoformat() if self.target_date else None,
+            "weekly_hours": self.weekly_hours,
+            "source": self.source,
             "progress": self.progress,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -81,6 +95,8 @@ class Concept(db.Model):
     name = db.Column(db.String(200), nullable=False)
     status = db.Column(db.String(30), default="not-started")  # not-started, in-progress, completed
     mastery = db.Column(db.Integer, default=0)  # 0 to 100
+    competency_type = db.Column(db.String(50), default="knowledge", nullable=False)
+    evidence_criterion = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -90,6 +106,8 @@ class Concept(db.Model):
             "name": self.name,
             "status": self.status,
             "mastery": self.mastery,
+            "competency_type": self.competency_type,
+            "evidence_criterion": self.evidence_criterion,
             "subject_id": self.subject_id,
         }
 

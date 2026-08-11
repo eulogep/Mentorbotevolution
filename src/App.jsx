@@ -38,7 +38,7 @@ function App() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-700 text-white shadow-sm"><Brain className="h-5 w-5" /></div>
             <div>
               <h1 className="text-base font-bold tracking-tight text-slate-950">Mentor Evolution</h1>
-              <p className="text-xs text-slate-500">Apprentissage TOEIC fondé sur les preuves</p>
+              <p className="text-xs text-slate-500">Apprentissage multi-domaines fondé sur les preuves</p>
             </div>
           </div>
           <div className="hidden items-center gap-3 sm:flex">
@@ -63,8 +63,8 @@ function App() {
           <div className="absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-teal-400/15 blur-3xl" />
           <div className="relative max-w-3xl">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-indigo-100"><ShieldCheck className="h-3.5 w-3.5" />Données réelles, règles explicables</div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Construisez une mémoire durable, une carte à la fois.</h2>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">Importez un contenu, transformez-le en pratique, répondez sans aide et laissez le calendrier s’ajuster à vos rappels. Les chiffres affichés dans l’application proviennent de vos propres activités.</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Construisez des compétences durables, dans le domaine qui compte pour vous.</h2>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">Créez un parcours pour l’anglais, l’informatique ou tout autre domaine. Transformez vos contenus en pratique, répondez sans aide et laissez le calendrier s’ajuster à vos rappels. Les chiffres affichés proviennent de vos propres activités.</p>
           </div>
         </section>
 
@@ -91,7 +91,7 @@ function App() {
               <CardContent className="p-5">
                 <div className="flex items-start gap-3"><BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" /><div>
                   <h3 className="text-sm font-semibold text-amber-950">Ce que l’application ne prétend pas faire</h3>
-                  <p className="mt-1 text-xs leading-5 text-amber-900">Elle ne déduit pas votre « style d’apprentissage », ne diagnostique pas votre cerveau et ne garantit pas un score TOEIC. Elle propose des pratiques et une planification transparentes, à ajuster avec votre expérience.</p>
+                  <p className="mt-1 text-xs leading-5 text-amber-900">Elle ne déduit pas votre « style d’apprentissage », ne diagnostique pas votre cerveau et ne garantit ni score d’examen ni certification. Elle propose des pratiques et une planification transparentes, à ajuster avec votre expérience.</p>
                 </div></div>
               </CardContent>
             </Card>

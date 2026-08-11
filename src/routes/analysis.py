@@ -20,78 +20,17 @@ from src.services.learning_pipeline import build_learning_pipeline
 analysis_bp = Blueprint("analysis", __name__)
 
 
-def generate_simulated_toeic_analysis_fallback(file_type):
-    """Fallback clearly marked as simulated TOEIC analysis when extraction finds no text."""
-
-    # Concepts TOEIC typiques pour la simulation
-    toeic_concepts = [
-        {
-            "name": "Conditional Sentences",
-            "difficulty": "high",
-            "importance": 0.9,
-            "category": "grammar",
-            "description": "Structures conditionnelles (if, unless, provided that)",
-            "examples": [
-                "If I were you, I would study harder",
-                "Unless you practice, you won't improve",
-            ],
-        },
-        {
-            "name": "Business Vocabulary",
-            "difficulty": "medium",
-            "importance": 0.8,
-            "category": "vocabulary",
-            "description": "Vocabulaire professionnel et commercial",
-            "examples": ["quarterly report", "market analysis", "stakeholder meeting"],
-        },
-        {
-            "name": "Past Perfect Tense",
-            "difficulty": "medium",
-            "importance": 0.7,
-            "category": "grammar",
-            "description": "Temps du passé composé et plus-que-parfait",
-            "examples": [
-                "I had finished before he arrived",
-                "She had been working there for years",
-            ],
-        },
-        {
-            "name": "Listening Comprehension",
-            "difficulty": "high",
-            "importance": 0.9,
-            "category": "skill",
-            "description": "Compréhension orale et reconnaissance des accents",
-            "examples": [
-                "Phone conversations",
-                "Business presentations",
-                "Announcements",
-            ],
-        },
-        {
-            "name": "Reading Speed",
-            "difficulty": "medium",
-            "importance": 0.8,
-            "category": "skill",
-            "description": "Vitesse de lecture et compréhension rapide",
-            "examples": [
-                "Skimming techniques",
-                "Scanning for information",
-                "Time management",
-            ],
-        },
-    ]
-
-    # Sélection aléatoire de concepts selon le type de fichier
-    num_concepts = random.randint(3, 6)
-    selected_concepts = random.sample(toeic_concepts, num_concepts)
-
+def generate_empty_analysis_fallback(file_type, reason=None):
+    """Return an honest empty analysis when no usable text can be extracted."""
     return {
-        "extracted_text": f"Fallback simulé: aucun texte exploitable extrait du fichier {file_type}.",
-        "concepts": selected_concepts,
-        "word_count": random.randint(500, 2000),
-        "reading_level": random.choice(["intermediate", "advanced", "expert"]),
-        "estimated_study_time": random.randint(30, 180),  # minutes
-        "is_simulated": True,
+        "extracted_text": "",
+        "concepts": [],
+        "word_count": 0,
+        "reading_level": "unknown",
+        "estimated_study_time": 0,
+        "is_simulated": False,
+        "needs_user_input": True,
+        "fallback_reason": reason or f"Aucun texte exploitable n’a été extrait de {file_type}.",
     }
 
 
@@ -256,24 +195,20 @@ def analyze_document():
                     }
                 )
 
-            if not enriched_concepts:
-                enriched_concepts = generate_simulated_toeic_analysis_fallback(
-                    "concept_fallback"
-                )["concepts"]
-
             analysis_result = {
                 "extracted_text": extracted_text,
                 "concepts": enriched_concepts,
                 "word_count": len(extracted_text.split()),
                 "reading_level": analyze_sentiment(extracted_text),
-                "estimated_study_time": max(5, len(extracted_text.split()) // 50),
+                "estimated_study_time": max(5, len(extracted_text.split()) // 50) if enriched_concepts else 0,
                 "is_simulated": False,
+                "needs_user_input": not bool(enriched_concepts),
+                "fallback_reason": "Aucune notion n’a pu être extraite automatiquement ; ajoutez-les manuellement." if not enriched_concepts else None,
             }
         else:
-            analysis_result = generate_simulated_toeic_analysis_fallback(
-                file_info["type"] or file.filename
+            analysis_result = generate_empty_analysis_fallback(
+                file_info["type"] or file.filename, extraction.fallback_reason
             )
-            analysis_result["fallback_reason"] = extraction.fallback_reason
 
         # Génération d'exercices
         exercises = generate_exercises(analysis_result["concepts"])
@@ -319,6 +254,7 @@ def analyze_document():
                 "extraction_method": extraction.method,
                 "fallback_reason": analysis_result.get("fallback_reason"),
                 "is_simulated": analysis_result.get("is_simulated", False),
+                "needs_user_input": analysis_result.get("needs_user_input", False),
             },
             "generated_content": {
                 "exercises": exercises,

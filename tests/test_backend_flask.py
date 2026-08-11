@@ -225,3 +225,60 @@ def test_update_progress_creates_study_session(client, auth_headers):
         assert session.duration_minutes == 25
         assert session.cards_reviewed == 1
         assert session.cards_correct == 1
+
+
+def test_multidomain_catalog_and_explicit_computing_path(client, auth_headers):
+    empty_response = client.get("/api/mastery/get-subjects", headers=auth_headers)
+    assert empty_response.status_code == 200
+    assert empty_response.get_json()["subjects"] == []
+
+    catalog_response = client.get("/api/mastery/catalog", headers=auth_headers)
+    assert catalog_response.status_code == 200
+    catalog = catalog_response.get_json()
+    template_ids = {template["id"] for template in catalog["templates"]}
+    assert "computing-foundations" in template_ids
+    assert "toeic-foundations" in template_ids
+
+    create_response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={"template_id": "computing-foundations", "weekly_hours": 4},
+    )
+    assert create_response.status_code == 201
+    subject = create_response.get_json()["subject"]
+    assert subject["name"] == "Fondamentaux de l’informatique"
+    assert subject["domain"] == "computing"
+    assert subject["objective_type"] == "competency"
+    assert subject["target_score"] is None
+    assert subject["weekly_hours"] == 4
+    assert len(subject["concepts"]) == 5
+    assert subject["concepts"][0]["evidence_criterion"]
+
+
+def test_custom_learning_path_supports_goal_and_deadline(client, auth_headers):
+    response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={
+            "name": "Automatiser mes rapports Excel",
+            "domain": "productivity",
+            "description": "Construire des tableaux mensuels reproductibles.",
+            "objective_type": "competency",
+            "objective_label": "Automatiser un rapport mensuel",
+            "target_date": "2026-12-31",
+            "weekly_hours": 2.5,
+            "concepts": [
+                {
+                    "name": "Références structurées",
+                    "competency_type": "procedure",
+                    "evidence_criterion": "Construire une formule qui reste correcte après ajout de lignes.",
+                }
+            ],
+        },
+    )
+    assert response.status_code == 201
+    subject = response.get_json()["subject"]
+    assert subject["domain"] == "productivity"
+    assert subject["objective_label"] == "Automatiser un rapport mensuel"
+    assert subject["target_date"] == "2026-12-31"
+    assert subject["concepts"][0]["competency_type"] == "procedure"
