@@ -1,1 +1,1 @@
-"""Paquets éditoriaux intégrés à Mentor Evolution."""
+"""Paquets éditoriaux originaux intégrés à Mentor Evolution."""

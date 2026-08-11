@@ -31,6 +31,7 @@ from src.routes.learning import learning_bp  # noqa: E402
 from src.routes.mastery import mastery_bp  # noqa: E402
 from src.routes.analysis import analysis_bp  # noqa: E402
 from src.routes.spaced_repetition import spaced_repetition_bp  # noqa: E402
+from src.routes.diagnostic import diagnostic_bp  # noqa: E402
 
 # Load environment variables from .env file
 load_dotenv()
@@ -90,6 +91,7 @@ app.register_blueprint(mastery_bp, url_prefix="/api/mastery")
 # Enregistrement des nouveaux blueprints v2.0
 app.register_blueprint(analysis_bp, url_prefix="/api/analysis")
 app.register_blueprint(spaced_repetition_bp, url_prefix="/api/spaced-repetition")
+app.register_blueprint(diagnostic_bp, url_prefix="/api/diagnostic")
 
 # Database configuration:
 # - DATABASE_URL is preferred for PostgreSQL production deployments.
