@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from src.models.user import Card, ReviewLog, StudySession, User, db
+from src.models.user import AdaptiveLearningProfile, Card, ReviewLog, StudySession, Subject, User, db
 from src.services.fsrs_scheduler import (
     DEFAULT_RETENTION,
     MAX_RETENTION,
@@ -22,6 +22,13 @@ from src.services.fsrs_scheduler import (
     review_with_fsrs,
 )
 from src.services.pipeline_flashcard_import import import_pipeline_flashcards
+from src.services.adaptive_learning import (
+    ADAPTIVE_DOMAINS,
+    build_adaptive_overview,
+    get_effective_retention,
+    resolve_card_domain,
+)
+from src.services.domain_catalog import DOMAIN_OPTIONS
 
 spaced_repetition_bp = Blueprint("spaced_repetition", __name__)
 
@@ -58,9 +65,20 @@ def create_spaced_repetition_card():
             return jsonify({"status": "error", "message": "concept_name is required"}), 400
 
         tags = data.get("tags", [])
+        subject_id = data.get("subject_id")
+        subject = None
+        if subject_id is not None:
+            subject = Subject.query.filter_by(id=subject_id, user_id=user_id).first()
+            if not subject:
+                return jsonify({"status": "error", "message": "Subject not found"}), 404
+        requested_domain = str(data.get("learning_domain", data.get("domain", ""))).strip()
+        if requested_domain and requested_domain not in ADAPTIVE_DOMAINS:
+            return jsonify({"status": "error", "message": "Unknown learning domain"}), 400
+        learning_domain = requested_domain or (subject.domain if subject else "general")
         card = Card(
             user_id=user_id,
-            subject_id=data.get("subject_id"),
+            subject_id=subject_id,
+            learning_domain=learning_domain,
             concept_name=concept_name,
             front_content=str(data.get("content", data.get("front_content", ""))).strip(),
             back_content=str(data.get("back_content", "")).strip(),
@@ -99,9 +117,10 @@ def review_card():
             return jsonify({"status": "error", "message": "Card not found"}), 404
 
         user = db.session.get(User, user_id)
-        retention_target = normalize_desired_retention(
-            user.desired_retention if user else DEFAULT_RETENTION
-        )
+        if not user:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+        learning_domain = resolve_card_domain(card)
+        retention_target, retention_source = get_effective_retention(user, learning_domain)
         result = review_with_fsrs(card.scheduler_state, rating, retention_target)
         response_time = _safe_response_time(data.get("response_time"))
 
@@ -145,6 +164,8 @@ def review_card():
             "next_review_in_minutes": result["scheduled_minutes"],
             "next_review_at": card.next_review.isoformat(),
             "retention_target": result["retention_target"],
+            "learning_domain": learning_domain,
+            "retention_source": retention_source,
             "memory_state": result["memory_state"],
             "retrievability_before": result["retrievability_before"],
             # Legacy alias preserved for clients that previously expected it.
@@ -164,13 +185,16 @@ def get_due_cards():
     try:
         user_id = int(get_jwt_identity())
         limit = _safe_limit(request.args.get("limit"), default=20)
-        due_cards = (
-            Card.query
-            .filter(Card.user_id == user_id, Card.next_review <= _utcnow_naive())
-            .order_by(Card.next_review.asc())
-            .limit(limit)
-            .all()
-        )
+        requested_domain = str(request.args.get("domain", "")).strip()
+        if requested_domain and requested_domain not in ADAPTIVE_DOMAINS:
+            return jsonify({"status": "error", "message": "Unknown learning domain"}), 400
+        due_cards = Card.query.filter(
+            Card.user_id == user_id,
+            Card.next_review <= _utcnow_naive(),
+        ).order_by(Card.next_review.asc()).all()
+        if requested_domain:
+            due_cards = [card for card in due_cards if resolve_card_domain(card) == requested_domain]
+        due_cards = due_cards[:limit]
         cards_data = [card.to_dict() for card in due_cards]
         average_seconds = (
             sum(card.average_response_time for card in due_cards if card.review_count > 0)
@@ -183,6 +207,7 @@ def get_due_cards():
             "due_cards": cards_data,
             "total_due": len(cards_data),
             "estimated_time_minutes": estimated_minutes,
+            "domain": requested_domain or None,
             "scheduling_method": "FSRS pour les cartes déjà migrées ; état initial pour les nouvelles cartes.",
         })
     except Exception:
@@ -228,6 +253,91 @@ def update_spaced_repetition_settings():
     except Exception:
         db.session.rollback()
         return jsonify({"status": "error", "message": "Impossible de mettre à jour la rétention cible."}), 500
+
+
+@spaced_repetition_bp.route("/adaptive-profiles", methods=["GET"])
+@jwt_required()
+def get_adaptive_profiles():
+    """Return global and per-domain retention preferences with their source."""
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user:
+        return jsonify({"status": "error", "message": "User not found"}), 404
+    explicit_profiles = {profile.domain: profile for profile in user.adaptive_profiles}
+    profiles = []
+    for domain in ADAPTIVE_DOMAINS:
+        retention, source = get_effective_retention(user, domain)
+        profile = explicit_profiles.get(domain)
+        profiles.append({
+            "domain": domain,
+            "label": DOMAIN_OPTIONS[domain],
+            "desired_retention": retention,
+            "retention_source": source,
+            "updated_at": profile.updated_at.isoformat() if profile and profile.updated_at else None,
+        })
+    return jsonify({
+        "status": "success",
+        "global_desired_retention": normalize_desired_retention(user.desired_retention),
+        "bounds": {"min": MIN_RETENTION, "max": MAX_RETENTION},
+        "profiles": profiles,
+        "explanation": "Une rétention plus élevée augmente généralement le nombre de révisions ; le réglage est appliqué uniquement aux futures revues du domaine.",
+    })
+
+
+@spaced_repetition_bp.route("/adaptive-profiles/<domain>", methods=["PUT"])
+@jwt_required()
+def update_adaptive_profile(domain):
+    """Persist a learner-approved FSRS retention target for one known domain."""
+    if domain not in ADAPTIVE_DOMAINS:
+        return jsonify({"status": "error", "message": "Unknown learning domain"}), 400
+    data = request.get_json(silent=True) or {}
+    try:
+        desired_retention = float(data.get("desired_retention"))
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "message": "desired_retention must be a number"}), 400
+    if not MIN_RETENTION <= desired_retention <= MAX_RETENTION:
+        return jsonify({
+            "status": "error",
+            "message": f"desired_retention must be between {MIN_RETENTION} and {MAX_RETENTION}",
+        }), 400
+
+    try:
+        user_id = int(get_jwt_identity())
+        profile = AdaptiveLearningProfile.query.filter_by(user_id=user_id, domain=domain).first()
+        if profile:
+            profile.desired_retention = desired_retention
+        else:
+            profile = AdaptiveLearningProfile(
+                user_id=user_id,
+                domain=domain,
+                desired_retention=desired_retention,
+            )
+            db.session.add(profile)
+        db.session.commit()
+        return jsonify({
+            "status": "success",
+            "profile": {
+                **profile.to_dict(),
+                "label": DOMAIN_OPTIONS[domain],
+                "retention_source": "domain_profile",
+            },
+        })
+    except Exception:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": "Impossible de mettre à jour le profil adaptatif."}), 500
+
+
+@spaced_repetition_bp.route("/adaptive-overview", methods=["GET"])
+@jwt_required()
+def get_adaptive_overview():
+    """Expose per-domain workload and recall data without score prediction."""
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user:
+        return jsonify({"status": "error", "message": "User not found"}), 404
+    return jsonify({
+        "status": "success",
+        "domains": build_adaptive_overview(user, _utcnow_naive()),
+        "explanation": "Les indicateurs décrivent vos cartes et revues enregistrées. Ils ne constituent ni un diagnostic ni une prédiction de réussite.",
+    })
 
 
 @spaced_repetition_bp.route("/get-schedule", methods=["GET"])

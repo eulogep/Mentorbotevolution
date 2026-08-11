@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Brain, ChevronRight, Clock3, Lightbulb, Loader2, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -13,7 +13,7 @@ const ratings = [
   { id: 'easy', label: 'Facile', hint: 'Je l’ai retrouvée immédiatement', className: 'bg-emerald-700 hover:bg-emerald-800' },
 ];
 
-const SpacedReview = () => {
+const SpacedReview = ({ domain = null }) => {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState([]);
   const [index, setIndex] = useState(0);
@@ -34,11 +34,12 @@ const SpacedReview = () => {
     setStartedAt(Date.now());
   };
 
-  const loadDue = async () => {
+  const loadDue = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get('/api/spaced-repetition/get-due-cards?limit=10');
+      const domainQuery = domain ? `&domain=${encodeURIComponent(domain)}` : '';
+      const response = await axios.get(`/api/spaced-repetition/get-due-cards?limit=10${domainQuery}`);
       const data = response.data;
       if (data.status !== 'success') throw new Error(data.message || 'Récupération échouée');
       setCards(data.due_cards || []);
@@ -52,9 +53,9 @@ const SpacedReview = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [domain]);
 
-  useEffect(() => { loadDue(); }, []);
+  useEffect(() => { loadDue(); }, [loadDue]);
 
   const review = async (rating) => {
     if (!current || !revealed || feedback) return;
@@ -126,7 +127,7 @@ const SpacedReview = () => {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900"><Brain className="h-5 w-5 text-indigo-700" />Session de rappel actif</h3>
-          <p className="mt-1 text-sm text-slate-600">Essayez de retrouver la réponse avant de consulter la correction.</p>
+          <p className="mt-1 text-sm text-slate-600">{domain ? `Session ciblée : ${domain === 'language' ? 'anglais et TOEIC' : domain === 'computing' ? 'informatique' : domain}. ` : ''}Essayez de retrouver la réponse avant de consulter la correction.</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-800">{remaining} carte{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}</Badge>

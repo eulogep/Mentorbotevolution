@@ -28,6 +28,7 @@ class User(db.Model):
     subjects = db.relationship("Subject", backref="owner", lazy=True)
     study_sessions = db.relationship("StudySession", backref="owner", lazy=True)
     review_logs = db.relationship("ReviewLog", backref="owner", lazy=True, cascade="all, delete-orphan")
+    adaptive_profiles = db.relationship("AdaptiveLearningProfile", backref="owner", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -37,6 +38,28 @@ class User(db.Model):
 
     def __repr__(self):
         return f"<User {self.username}>"
+
+
+class AdaptiveLearningProfile(db.Model):
+    """Explicit FSRS retention preference for one learner and one domain."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    domain = db.Column(db.String(50), nullable=False)
+    desired_retention = db.Column(db.Float, nullable=False, default=0.90)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint("user_id", "domain", name="uq_adaptive_profile_user_domain"),)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "domain": self.domain,
+            "desired_retention": self.desired_retention,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class Subject(db.Model):
@@ -120,6 +143,7 @@ class Card(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey("subject.id"), nullable=True)
+    learning_domain = db.Column(db.String(50), nullable=True)
     concept_name = db.Column(db.String(200), nullable=False)
     front_content = db.Column(db.Text, default="")  # Question / front side
     back_content = db.Column(db.Text, default="")   # Answer / back side
@@ -174,6 +198,7 @@ class Card(db.Model):
         return {
             "id": self.id,
             "concept_name": self.concept_name,
+            "learning_domain": self.learning_domain or (self.subject.domain if self.subject else "general"),
             "front_content": self.front_content,
             "back_content": self.back_content,
             "difficulty": self.difficulty,

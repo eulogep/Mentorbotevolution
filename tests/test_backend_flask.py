@@ -285,3 +285,85 @@ def test_custom_learning_path_supports_goal_and_deadline(client, auth_headers):
     assert subject["objective_label"] == "Automatiser un rapport mensuel"
     assert subject["target_date"] == "2026-12-31"
     assert subject["concepts"][0]["competency_type"] == "procedure"
+
+
+def test_adaptive_profiles_filter_sessions_and_apply_domain_retention(client, auth_headers):
+    language_path_response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={"template_id": "toeic-foundations"},
+    )
+    computing_path_response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={"template_id": "computing-foundations"},
+    )
+    assert language_path_response.status_code == 201
+    assert computing_path_response.status_code == 201
+    language_subject_id = language_path_response.get_json()["subject"]["id"]
+    computing_subject_id = computing_path_response.get_json()["subject"]["id"]
+
+    profile_response = client.put(
+        "/api/spaced-repetition/adaptive-profiles/language",
+        headers=auth_headers,
+        json={"desired_retention": 0.93},
+    )
+    assert profile_response.status_code == 200
+    assert profile_response.get_json()["profile"]["desired_retention"] == 0.93
+
+    language_card_response = client.post(
+        "/api/spaced-repetition/create-card",
+        headers=auth_headers,
+        json={
+            "subject_id": language_subject_id,
+            "concept_name": "Board meeting",
+            "front_content": "Que signifie board meeting ?",
+            "back_content": "Réunion du conseil d’administration.",
+        },
+    )
+    computing_card_response = client.post(
+        "/api/spaced-repetition/create-card",
+        headers=auth_headers,
+        json={
+            "subject_id": computing_subject_id,
+            "concept_name": "DNS",
+            "front_content": "Quel service associe un nom de domaine à une adresse IP ?",
+            "back_content": "Le DNS.",
+        },
+    )
+    assert language_card_response.status_code == 200
+    assert computing_card_response.status_code == 200
+    language_card = language_card_response.get_json()["card"]
+
+    language_due_response = client.get(
+        "/api/spaced-repetition/get-due-cards?domain=language",
+        headers=auth_headers,
+    )
+    assert language_due_response.status_code == 200
+    language_due = language_due_response.get_json()
+    assert language_due["domain"] == "language"
+    assert language_due["total_due"] == 1
+    assert language_due["due_cards"][0]["learning_domain"] == "language"
+
+    review_response = client.post(
+        "/api/spaced-repetition/review-card",
+        headers=auth_headers,
+        json={"card_id": language_card["id"], "rating": "good", "response_time": 8},
+    )
+    assert review_response.status_code == 200
+    review = review_response.get_json()
+    assert review["learning_domain"] == "language"
+    assert review["retention_target"] == 0.93
+    assert review["retention_source"] == "domain_profile"
+
+    overview_response = client.get(
+        "/api/spaced-repetition/adaptive-overview",
+        headers=auth_headers,
+    )
+    assert overview_response.status_code == 200
+    language_overview = next(
+        item for item in overview_response.get_json()["domains"] if item["domain"] == "language"
+    )
+    assert language_overview["cards_total"] == 1
+    assert language_overview["desired_retention"] == 0.93
+    assert language_overview["retention_source"] == "domain_profile"
