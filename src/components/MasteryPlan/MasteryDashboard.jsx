@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { BarChart3, BookOpen, CheckCircle, Clock3, FileUp, ListChecks, Sparkles, Target } from 'lucide-react';
+import { BarChart3, BookOpen, BrainCircuit, CheckCircle, Clock3, FileUp, ListChecks, Sparkles, Target } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -9,6 +9,7 @@ import PlanGenerator from './PlanGenerator';
 import ValidationChecklist from './ValidationChecklist';
 import SpacedReview from './SpacedReview';
 import SpacedAnalytics from './SpacedAnalytics';
+import AdaptiveLearning from './AdaptiveLearning';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const MasteryDashboard = () => {
@@ -19,6 +20,7 @@ const MasteryDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [analyzedDocs, setAnalyzedDocs] = useState([]);
   const [selectedConceptId, setSelectedConceptId] = useState('');
+  const [reviewDomain, setReviewDomain] = useState(null);
   const [error, setError] = useState(null);
 
   const concepts = useMemo(
@@ -69,12 +71,17 @@ const MasteryDashboard = () => {
     setActiveTab('validation');
   };
 
+  const startDomainReview = (domain) => {
+    setReviewDomain(domain);
+    setActiveTab('spaced');
+  };
+
   const renderOverview = () => (
     <div className="space-y-5">
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Erreur : {error}</div>}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="border-slate-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">Parcours actifs</p><p className="mt-2 text-3xl font-bold text-slate-950">{loading ? '—' : subjects.length}</p></div><BookOpen className="h-5 w-5 text-indigo-700" /></div><p className="mt-3 text-xs text-slate-600">Créez un parcours pour l’anglais, l’informatique ou toute autre compétence.</p></CardContent></Card>
-        <Card className="border-slate-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">À revoir maintenant</p><p className="mt-2 text-3xl font-bold text-slate-950">{loading ? '—' : dueCount}</p></div><Clock3 className="h-5 w-5 text-emerald-700" /></div><p className="mt-3 text-xs text-slate-600">Ce total reflète les échéances enregistrées dans votre calendrier.</p><Button size="sm" className="mt-3 bg-emerald-700 hover:bg-emerald-800" onClick={() => setActiveTab('spaced')}>Démarrer la session</Button></CardContent></Card>
+        <Card className="border-slate-200 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">À revoir maintenant</p><p className="mt-2 text-3xl font-bold text-slate-950">{loading ? '—' : dueCount}</p></div><Clock3 className="h-5 w-5 text-emerald-700" /></div><p className="mt-3 text-xs text-slate-600">Ce total reflète les échéances enregistrées dans votre calendrier.</p><Button size="sm" className="mt-3 bg-emerald-700 hover:bg-emerald-800" onClick={() => { setReviewDomain(null); setActiveTab('spaced'); }}>Démarrer la session</Button></CardContent></Card>
       </div>
 
       <Card className="border-slate-200 shadow-sm">
@@ -92,12 +99,13 @@ const MasteryDashboard = () => {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 md:grid-cols-6">
+      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 md:grid-cols-7">
         <TabsTrigger value="overview" className="text-xs sm:text-sm"><BookOpen className="mr-1.5 h-4 w-4" />Aujourd’hui</TabsTrigger>
         <TabsTrigger value="upload" className="text-xs sm:text-sm"><FileUp className="mr-1.5 h-4 w-4" />Importer</TabsTrigger>
         <TabsTrigger value="generator" className="text-xs sm:text-sm"><Target className="mr-1.5 h-4 w-4" />Parcours</TabsTrigger>
         <TabsTrigger value="validation" className="text-xs sm:text-sm"><CheckCircle className="mr-1.5 h-4 w-4" />Expliquer</TabsTrigger>
         <TabsTrigger value="spaced" className="text-xs sm:text-sm"><Sparkles className="mr-1.5 h-4 w-4" />Réviser</TabsTrigger>
+        <TabsTrigger value="adaptive" className="text-xs sm:text-sm"><BrainCircuit className="mr-1.5 h-4 w-4" />Adapter</TabsTrigger>
         <TabsTrigger value="analytics" className="text-xs sm:text-sm"><BarChart3 className="mr-1.5 h-4 w-4" />Données</TabsTrigger>
       </TabsList>
 
@@ -107,7 +115,8 @@ const MasteryDashboard = () => {
       <TabsContent value="validation" className="mt-6 space-y-4">
         {concepts.length ? <><Card className="border-slate-200 shadow-sm"><CardContent className="p-4"><label htmlFor="concept-select" className="mb-2 block text-sm font-semibold text-slate-800">Notion à expliquer</label><select id="concept-select" value={selectedConceptId} onChange={(event) => setSelectedConceptId(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600">{concepts.map((concept) => <option key={concept.id} value={concept.id}>{concept.subjectName} — {concept.name}</option>)}</select></CardContent></Card>{selectedConcept && <ValidationChecklist concept={selectedConcept} onValidationComplete={refreshDashboard} />}</> : <Card><CardContent className="p-6 text-sm text-slate-600">Créez d’abord une matière et une notion pour démarrer une auto-explication.</CardContent></Card>}
       </TabsContent>
-      <TabsContent value="spaced" className="mt-6"><SpacedReview /></TabsContent>
+      <TabsContent value="spaced" className="mt-6"><SpacedReview key={reviewDomain || 'all'} domain={reviewDomain} /></TabsContent>
+      <TabsContent value="adaptive" className="mt-6"><AdaptiveLearning onStartDomainSession={startDomainReview} /></TabsContent>
       <TabsContent value="analytics" className="mt-6"><SpacedAnalytics /></TabsContent>
     </Tabs>
   );
