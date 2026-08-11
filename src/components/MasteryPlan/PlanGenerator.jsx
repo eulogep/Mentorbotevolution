@@ -1,241 +1,158 @@
-/**
- * PlanGenerator Component
- * Connexion backend: /api/analysis/generate-plan (JSON)
- */
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Target, Brain, Calendar, CheckCircle2, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Slider } from '../ui/slider';
+import { BookOpenCheck, CalendarDays, CheckCircle2, Clock3, Loader2, PlusCircle, Target } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 
-const PlanGenerator = ({ analyzedDocuments = [], onPlanGenerated }) => {
-  const [targetScore, setTargetScore] = useState([14]);
-  const [timeframe, setTimeframe] = useState(''); // en semaines
-  const [learningStyle, setLearningStyle] = useState('');
-  const [studyTime, setStudyTime] = useState([2]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedPlan, setGeneratedPlan] = useState(null);
+const practiceLabels = {
+  recall: 'Rappel actif',
+  explanation: 'Auto-explication',
+  listening: 'Écoute',
+  timed_reading: 'Lecture chronométrée',
+  diagnostic: 'Diagnostic',
+  practice: 'Pratique guidée',
+  production: 'Production',
+};
+
+const PlanGenerator = ({ onPlanGenerated }) => {
+  const { token } = useAuth();
+  const [catalog, setCatalog] = useState({ domains: [], templates: [] });
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
+  const [customPath, setCustomPath] = useState({ name: '', domain: 'general', description: '', objectiveLabel: 'Compétence visée' });
+  const [weeklyHours, setWeeklyHours] = useState('3');
+  const [targetDate, setTargetDate] = useState('');
+  const [targetScore, setTargetScore] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [createdPath, setCreatedPath] = useState(null);
   const [error, setError] = useState(null);
 
-  const learningMethods = {
-    visual: { name: 'Visuel', icon: '👁️', techniques: ['Dual Coding', 'Méthode des Lieux', 'Cartes Conceptuelles'] },
-    auditory: { name: 'Auditif', icon: '👂', techniques: ['Technique Feynman', 'Répétition Orale', 'Podcasts Éducatifs'] },
-    kinesthetic: { name: 'Kinesthésique', icon: '✋', techniques: ['Apprentissage Actif', 'Simulations', 'Exercices Pratiques'] },
-    mixed: { name: 'Mixte', icon: '🧠', techniques: ['Approche Multimodale', 'Rotation des Méthodes', 'Adaptation Contextuelle'] }
-  };
+  const selectedTemplate = catalog.templates.find((template) => template.id === selectedTemplateId);
 
-  const convertWeeksToMonths = (weeks) => Math.max(1, Math.round(parseInt(weeks || '12', 10) / 4));
+  useEffect(() => {
+    const loadCatalog = async () => {
+      try {
+        setLoading(true);
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const response = await axios.get('/api/mastery/catalog', config);
+        if (response.data.status !== 'success') throw new Error(response.data.message || 'Catalogue indisponible');
+        setCatalog({ domains: response.data.domains || [], templates: response.data.templates || [] });
+      } catch (requestError) {
+        setError(requestError.message || 'Impossible de charger les parcours.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (token) loadCatalog();
+  }, [token]);
 
-  const buildConceptsPayload = () => {
-    if (analyzedDocuments.length > 0) {
-      // extraire une liste unique des concepts avec difficulté/importance par défaut
-      const setNames = new Set();
-      const concepts = [];
-      analyzedDocuments.forEach(doc => {
-        (doc.concepts || []).forEach(name => {
-          if (!setNames.has(name)) {
-            setNames.add(name);
-            concepts.push({ name, difficulty: 'medium', importance: 0.7 });
-          }
-        });
-      });
-      return concepts;
-    }
-    // fallback par défaut
-    return [
-      { name: 'Grammaire avancée', difficulty: 'medium', importance: 0.7 },
-      { name: 'Vocabulaire business', difficulty: 'medium', importance: 0.8 },
-      { name: 'Compréhension orale', difficulty: 'high', importance: 0.9 },
-    ];
-  };
-
-  const generatePlan = async () => {
-    if (!timeframe || !learningStyle) return;
-    setIsGenerating(true);
+  const selectTemplate = (templateId) => {
+    setIsCustom(false);
+    setSelectedTemplateId(templateId);
+    setCreatedPath(null);
     setError(null);
+    setTargetScore('');
+  };
+
+  const selectCustom = () => {
+    setIsCustom(true);
+    setSelectedTemplateId('');
+    setCreatedPath(null);
+    setError(null);
+  };
+
+  const createPath = async () => {
+    const payload = {
+      weekly_hours: weeklyHours || undefined,
+      target_date: targetDate || undefined,
+    };
+    if (isCustom) {
+      payload.name = customPath.name;
+      payload.domain = customPath.domain;
+      payload.description = customPath.description;
+      payload.objective_type = 'competency';
+      payload.objective_label = customPath.objectiveLabel || 'Compétence visée';
+    } else {
+      payload.template_id = selectedTemplateId;
+      if (selectedTemplate?.objective_type === 'exam_score' && targetScore) payload.target_score = targetScore;
+    }
+
+    if ((!isCustom && !selectedTemplateId) || (isCustom && !customPath.name.trim())) {
+      setError('Choisissez un modèle ou renseignez le nom de votre parcours.');
+      return;
+    }
 
     try {
-      const payload = {
-        target_score: Math.round((targetScore[0] / 20) * 100),
-        timeframe_months: convertWeeksToMonths(timeframe),
-        daily_study_hours: studyTime[0],
-        learning_style: learningStyle,
-        chronotype: 'intermediate',
-        concepts: buildConceptsPayload()
-      };
-
-      const res = await axios.post('/api/analysis/generate-plan', payload);
-
-      const data = res.data;
-      if (data.status !== 'success') throw new Error(data.message || 'Erreur génération');
-
-      const plan = data.plan;
-      const conceptsPlan = (plan.concepts_plan || []).map((c, idx) => ({
-        id: idx + 1,
-        name: c.name,
-        difficulty: c.difficulty === 'high' ? 3 : c.difficulty === 'medium' ? 2 : 1,
-        estimatedTime: c.estimated_hours || 6,
-        progress: 0,
-        methods: c.methods || learningMethods[learningStyle]?.techniques || ['Répétition Espacée'],
-        resources: {
-          flashcards: Math.max(10, Math.round((c.exercises_count || 20) * 0.4)),
-          quizzes: Math.max(3, Math.round((c.exercises_count || 20) * 0.2)),
-          exercises: Math.max(5, Math.round((c.exercises_count || 20) * 0.4))
-        },
-        schedule: { startWeek: 1, endWeek: 4, sessionsPerWeek: 3, reviewSessions: [5, 7, 11] }
-      }));
-
-      const uiPlan = {
-        id: plan.id,
-        targetScore: targetScore[0],
-        timeframe,
-        learningStyle,
-        dailyStudyTime: studyTime[0],
-        concepts: conceptsPlan,
-        milestones: (plan.milestones || []).map((m, i) => ({
-          week: (m.month || i + 1) * 4,
-          targetScore: Math.round((payload.target_score / 4) * (i + 1)),
-          description: m.key_objectives?.[0] || `Évaluation intermédiaire ${(i + 1)}`,
-          concepts: m.target_concepts || 3
-        })),
-        totalEstimatedTime: plan.total_estimated_hours || conceptsPlan.length * 8,
-        successProbability: plan.success_probability || 0.8
-      };
-
-      setGeneratedPlan(uiPlan);
-      onPlanGenerated?.(uiPlan);
-    } catch (e) {
-      console.error(e);
-      setError(e.message);
+      setSubmitting(true);
+      setError(null);
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      const response = await axios.post('/api/mastery/create-path', payload, config);
+      if (response.data.status !== 'success') throw new Error(response.data.message || 'Création impossible');
+      setCreatedPath(response.data.subject);
+      onPlanGenerated?.(response.data.subject);
+    } catch (requestError) {
+      setError(requestError.message || 'Impossible de créer le parcours.');
     } finally {
-      setIsGenerating(false);
+      setSubmitting(false);
     }
   };
 
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty) { case 1: return 'bg-green-100 text-green-800'; case 2: return 'bg-yellow-100 text-yellow-800'; case 3: return 'bg-red-100 text-red-800'; default: return 'bg-gray-100 text-gray-800'; }
-  };
-  const getDifficultyLabel = (difficulty) => (difficulty === 1 ? 'Facile' : difficulty === 2 ? 'Moyen' : difficulty === 3 ? 'Difficile' : 'Inconnu');
+  if (loading) return <div className="flex items-center gap-2 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" />Chargement des parcours disponibles…</div>;
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="border-slate-200 shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Générateur de Plan de Maîtrise</CardTitle>
-          <CardDescription>Définissez vos objectifs pour générer un plan d'apprentissage personnalisé et adaptatif</CardDescription>
+          <CardTitle className="flex items-center gap-2 text-lg"><BookOpenCheck className="h-5 w-5 text-indigo-700" />Créer un parcours de maîtrise</CardTitle>
+          <CardDescription>Choisissez un modèle comme point de départ ou définissez votre propre domaine. Les modèles organisent un parcours ; ils ne mesurent pas votre niveau et ne prédisent pas votre réussite.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Objectif */}
-          <div className="space-y-2">
-            <Label className="text-base font-medium">Objectif de note</Label>
-            <div className="px-4">
-              <Slider value={targetScore} onValueChange={setTargetScore} max={20} min={10} step={0.5} className="w-full" />
-              <div className="flex justify-between text-sm text-gray-500 mt-1"><span>10/20</span><span className="font-medium text-blue-600">{targetScore[0]}/20</span><span>20/20</span></div>
-            </div>
-          </div>
-          {/* Délai */}
-          <div className="space-y-2">
-            <Label htmlFor="timeframe">Délai souhaité</Label>
-            <Select value={timeframe} onValueChange={setTimeframe}>
-              <SelectTrigger><SelectValue placeholder="Sélectionnez une durée" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="4">4 semaines (intensif)</SelectItem>
-                <SelectItem value="8">8 semaines (accéléré)</SelectItem>
-                <SelectItem value="12">12 semaines (standard)</SelectItem>
-                <SelectItem value="16">16 semaines (confortable)</SelectItem>
-                <SelectItem value="24">24 semaines (progressif)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Style */}
-          <div className="space-y-2">
-            <Label>Style d'apprentissage préféré</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(learningMethods).map(([key, method]) => (
-                <Card key={key} className={`cursor-pointer transition-all ${learningStyle === key ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`} onClick={() => setLearningStyle(key)}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2"><span className="text-lg">{method.icon}</span><span className="font-medium">{method.name}</span></div>
-                    <p className="text-xs text-gray-600">{method.techniques.join(', ')}</p>
-                  </CardContent>
-                </Card>
+          {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Erreur : {error}</div>}
+
+          <section aria-labelledby="template-title">
+            <div className="mb-3 flex items-center justify-between gap-3"><h3 id="template-title" className="font-semibold text-slate-900">Modèles de parcours</h3><Button type="button" size="sm" variant={isCustom ? 'default' : 'outline'} onClick={selectCustom}><PlusCircle className="mr-2 h-4 w-4" />Parcours libre</Button></div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {catalog.templates.map((template) => (
+                <button type="button" key={template.id} onClick={() => selectTemplate(template.id)} className={`rounded-xl border p-4 text-left transition ${selectedTemplateId === template.id && !isCustom ? 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50'}`}>
+                  <div className="flex items-start justify-between gap-2"><span className="font-semibold text-slate-900">{template.title}</span><Badge variant="outline" className="shrink-0 text-xs">{template.domain_label}</Badge></div>
+                  <p className="mt-2 text-xs leading-5 text-slate-600">{template.description}</p>
+                  <p className="mt-3 text-xs font-medium text-indigo-700">{template.concept_count ? `${template.concept_count} notions initiales` : 'Structure de départ personnalisable'}</p>
+                </button>
               ))}
             </div>
-          </div>
-          {/* Temps d'étude */}
-          <div className="space-y-2">
-            <Label className="text-base font-medium">Temps d'étude quotidien</Label>
-            <div className="px-4">
-              <Slider value={studyTime} onValueChange={setStudyTime} max={6} min={0.5} step={0.5} className="w-full" />
-              <div className="flex justify-between text-sm text-gray-500 mt-1"><span>30min</span><span className="font-medium text-blue-600">{studyTime[0]}h/jour</span><span>6h</span></div>
-            </div>
-          </div>
-          <Button onClick={generatePlan} disabled={!timeframe || !learningStyle || isGenerating} className="w-full">
-            {isGenerating ? (<><Brain className="h-4 w-4 mr-2 animate-pulse" />Génération du plan en cours...</>) : (<><Target className="h-4 w-4 mr-2" />Générer le Plan de Maîtrise</>)}
-          </Button>
-          {error && <p className="text-sm text-red-600">Erreur: {error}</p>}
+          </section>
+
+          {isCustom ? (
+            <section className="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5" aria-labelledby="custom-title">
+              <h3 id="custom-title" className="font-semibold text-slate-900">Votre parcours libre</h3>
+              <div className="grid gap-4 md:grid-cols-2"><div><Label htmlFor="custom-path-name">Nom du parcours</Label><Input id="custom-path-name" value={customPath.name} onChange={(event) => setCustomPath((current) => ({ ...current, name: event.target.value }))} placeholder="Ex. Administration système Linux" className="mt-2 bg-white" /></div><div><Label htmlFor="custom-domain">Domaine</Label><select id="custom-domain" value={customPath.domain} onChange={(event) => setCustomPath((current) => ({ ...current, domain: event.target.value }))} className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600">{catalog.domains.map((domain) => <option key={domain.id} value={domain.id}>{domain.label}</option>)}</select></div></div>
+              <div><Label htmlFor="custom-objective">Objectif formulé</Label><Input id="custom-objective" value={customPath.objectiveLabel} onChange={(event) => setCustomPath((current) => ({ ...current, objectiveLabel: event.target.value }))} placeholder="Ex. Savoir automatiser des tableaux mensuels" className="mt-2 bg-white" /></div>
+              <div><Label htmlFor="custom-description">Contexte ou résultat attendu</Label><Textarea id="custom-description" value={customPath.description} onChange={(event) => setCustomPath((current) => ({ ...current, description: event.target.value }))} placeholder="Ce que vous voulez savoir comprendre, réaliser ou expliquer…" className="mt-2 min-h-24 bg-white" /></div>
+            </section>
+          ) : selectedTemplate && (
+            <section className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5" aria-label="Détails du modèle sélectionné">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><h3 className="font-semibold text-slate-900">{selectedTemplate.title}</h3><p className="mt-1 text-sm text-slate-600">{selectedTemplate.description}</p></div><Badge className="w-fit bg-indigo-700">{selectedTemplate.domain_label}</Badge></div>
+              <div className="mt-4 flex flex-wrap gap-2">{selectedTemplate.practice_types.map((practiceType) => <Badge key={practiceType} variant="outline">{practiceLabels[practiceType] || practiceType}</Badge>)}</div>
+              {selectedTemplate.objective_type === 'exam_score' && <div className="mt-4 max-w-xs"><Label htmlFor="target-score">{selectedTemplate.objective_label}</Label><Input id="target-score" type="number" min="0" value={targetScore} onChange={(event) => setTargetScore(event.target.value)} placeholder="Facultatif" className="mt-2 bg-white" /></div>}
+            </section>
+          )}
+
+          <section className="grid gap-4 md:grid-cols-2" aria-label="Cadre de travail">
+            <div><Label htmlFor="weekly-hours" className="flex items-center gap-2"><Clock3 className="h-4 w-4" />Temps disponible par semaine</Label><Input id="weekly-hours" type="number" min="0.25" max="80" step="0.25" value={weeklyHours} onChange={(event) => setWeeklyHours(event.target.value)} className="mt-2" /></div>
+            <div><Label htmlFor="target-date" className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />Échéance, si vous en avez une</Label><Input id="target-date" type="date" value={targetDate} onChange={(event) => setTargetDate(event.target.value)} className="mt-2" /></div>
+          </section>
+
+          <Button onClick={createPath} disabled={submitting || (!isCustom && !selectedTemplateId)} className="w-full bg-indigo-700 hover:bg-indigo-800">{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création en cours…</> : <><Target className="mr-2 h-4 w-4" />Créer ce parcours</>}</Button>
         </CardContent>
       </Card>
 
-      {generatedPlan && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" />Plan de Maîtrise Généré</CardTitle>
-            <CardDescription>Votre parcours personnalisé pour atteindre {generatedPlan.targetScore}/20</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg"><div className="text-2xl font-bold text-blue-600">{generatedPlan.concepts.length}</div><div className="text-sm text-blue-800">Concepts à maîtriser</div></div>
-              <div className="text-center p-4 bg-green-50 rounded-lg"><div className="text-2xl font-bold text-green-600">{generatedPlan.totalEstimatedTime}h</div><div className="text-sm text-green-800">Temps estimé total</div></div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg"><div className="text-2xl font-bold text-purple-600">{Math.round(generatedPlan.successProbability * 100)}%</div><div className="text-sm text-purple-800">Probabilité de succès</div></div>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Concepts à Maîtriser</h3>
-              <div className="space-y-3">
-                {generatedPlan.concepts.map((concept) => (
-                  <div key={concept.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{concept.name}</h4>
-                      <Badge className={getDifficultyColor(concept.difficulty)}>{getDifficultyLabel(concept.difficulty)}</Badge>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600 mb-3">
-                      <div>⏱️ {concept.estimatedTime}h</div>
-                      <div>📚 {concept.resources.flashcards} flashcards</div>
-                      <div>❓ {concept.resources.quizzes} quiz</div>
-                      <div>✏️ {concept.resources.exercises} exercices</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Méthodes:</span>
-                      {concept.methods.map((method, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">{method}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Jalons de Progression</h3>
-              <div className="space-y-2">
-                {generatedPlan.milestones.map((milestone, index) => (
-                  <div key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center"><span className="text-blue-600 font-bold">{milestone.week}</span></div>
-                    <div className="flex-grow">
-                      <div className="font-medium">{milestone.description}</div>
-                      <div className="text-sm text-gray-600">Objectif: {milestone.targetScore}/20 • {milestone.concepts} concepts maîtrisés</div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-gray-400" />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <Button className="w-full" size="lg"><Calendar className="h-4 w-4 mr-2" />Commencer le Plan de Maîtrise</Button>
-          </CardContent>
-        </Card>
-      )}
+      {createdPath && <Card className="border-emerald-200 bg-emerald-50 shadow-sm"><CardContent className="flex gap-3 p-5"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" /><div><p className="font-semibold text-emerald-950">Parcours créé : {createdPath.name}</p><p className="mt-1 text-sm text-emerald-900">Vous pouvez maintenant sélectionner une notion, importer vos propres ressources, puis créer les cartes ou activités pertinentes.</p></div></CardContent></Card>}
     </div>
   );
 };

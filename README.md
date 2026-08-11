@@ -1,57 +1,54 @@
-# MentorBot Evolution
+# Mentor Evolution
 
-Plateforme d'apprentissage TOEIC avec frontend React/Vite et backend Flask.
+Mentor Evolution est une plateforme personnelle d’apprentissage **multi-domaines**. Elle combine rappel actif, répétition espacée adaptative et suivi de pratique pour l’anglais, l’informatique, Excel, Power BI, le réseau, la cybersécurité et les parcours libres. Le TOEIC est un parcours de référence, non la limite du modèle de données.
 
-Le projet est stabilise progressivement. Il garde l'architecture actuelle:
-React/Vite cote client, Flask + SQLAlchemy cote API, SQLite en local et
-PostgreSQL possible via `DATABASE_URL`.
+Le projet conserve une architecture React/Vite côté client et Flask/SQLAlchemy côté API. SQLite est adapté au développement local ; PostgreSQL est recommandé pour un déploiement durable via `DATABASE_URL`.
 
-## Fonctionnalites disponibles
+## Fonctionnalités disponibles
 
-- Authentification utilisateur avec inscription, connexion et JWT.
-- Backend Flask expose sous `/api`.
-- Modeles SQLAlchemy pour utilisateurs, sujets, concepts, flashcards et sessions d'etude.
-- Plans de maitrise TOEIC basiques.
-- Repetition espacee avec cartes persistantes et algorithme SM-2 simplifie.
-- Analyse de documents:
-  - texte brut;
-  - images via OCR Tesseract;
-  - PDF avec extraction de texte PyMuPDF;
-  - OCR de secours pour PDF scannes quand aucun texte embarque n'est trouve.
-- Frontend React/Vite avec dashboard, upload de documents et vues de repetition espacee.
+| Fonction | État |
+|---|---|
+| Authentification par inscription, connexion et JWT | Disponible |
+| Catalogue de parcours explicites | Disponible : TOEIC, informatique, Excel, Power BI, réseau, cybersécurité et parcours libre |
+| Parcours « Fondamentaux de l’informatique » | Disponible avec cinq notions initiales : données, algorithmique, systèmes, réseau et hygiène numérique |
+| Sujets, notions et critères de preuve | Persistés et génériques par domaine |
+| Cartes et répétition espacée FSRS | Disponibles, avec journal de revue et rétention cible configurable |
+| Session de rappel actif | Disponible : réponse avant correction, évaluation explicite, feedback et prochaine échéance |
+| Analytics personnels | Disponibles à partir des journaux de révision réels |
+| Import de documents | Disponible pour texte brut, images OCR et PDF avec texte ou OCR de secours |
 
-## Fonctionnalites partiellement implementees
+## Principes de produit
 
-- L'analyse NLP reste heuristique: extraction de mots/concepts par frequence et regex.
-- Les recommandations d'apprentissage sont encore simples et parfois statiques.
-- Certains fallbacks generent des concepts TOEIC simules quand aucun texte exploitable
-  n'est extrait. Ces reponses sont marquees par `is_simulated: true`.
-- La persistance sur Vercel peut fonctionner avec SQLite dans `/tmp`, mais ce stockage
-  est ephemere et ne convient pas a une vraie production.
+> Les modèles de parcours offrent une structure de départ ; ils ne constituent ni diagnostic de niveau, ni promesse de réussite, ni certification.
 
-## Fonctionnalites prevues
+Les connaissances, procédures, productions et diagnostics ne sont pas confondus. FSRS planifie le rappel à long terme des notions, mais une compétence appliquée exige en plus une activité et une preuve adaptées au domaine. Les parcours cyber doivent rester défensifs et s’appuyer sur des laboratoires ou environnements explicitement autorisés.
 
-- Brancher une base PostgreSQL geree en production via `DATABASE_URL`.
-- Etendre les migrations de schema au fil des changements de modele.
-- Remplacer progressivement les heuristiques NLP par une analyse plus robuste.
-- Ameliorer les tests d'integration frontend/backend.
-- Ajouter un suivi de progression plus precis et moins statique.
+Le projet ne personnalise pas les contenus à partir de « styles d’apprentissage » supposés, de chronotype ni de probabilités individuelles de réussite. Les réglages utiles sont la disponibilité, l’échéance, les objectifs formulés et les données de pratique observées.
 
-## Limites connues
+## Architecture de domaine
 
-- Pas de migration vers FastAPI prevue a court terme.
-- Pas de Kubernetes, Terraform, Vault, Redis, S3 ou file cloud queue dans cette phase.
-- L'OCR depend d'une installation Tesseract disponible sur la machine ou l'environnement.
-- Les fichiers DOCX ne sont pas encore extraits reellement.
-- Les tests historiques dans `tests/backend_test.py` ciblent un serveur HTTP lance a part;
-  les tests pytest modernes sont dans `tests/test_backend_flask.py`.
+| Niveau | Rôle |
+|---|---|
+| Domaine | Langues, informatique, bureautique, données, infrastructure, cybersécurité ou parcours libre |
+| Parcours | Objectif personnel, modèle choisi ou parcours libre ; il peut porter une échéance et un rythme hebdomadaire |
+| Compétence / notion | Élément à comprendre, appliquer, produire, diagnostiquer ou expliquer |
+| Activité | Rappel, auto-explication, exercice pratique, diagnostic ou production ; les activités pratiques seront enrichies progressivement |
+| Preuve | Résultat observable d’une activité ; les cartes FSRS seules ne sont pas une certification |
 
-## Prerequis
+La documentation détaillée se trouve dans [l’architecture multi-domaines](docs/ARCHITECTURE_MULTI_DOMAINES_2026-08-11.md), [l’audit de généralisation](docs/AUDIT_GENERALISATION_MULTI_DOMAINES_2026-08-11.md) et les [notes de recherche](docs/RECHERCHE_MULTI_DOMAINES_2026-08-11.md).
 
-- Node.js 18 ou plus recent.
-- Python 3.12 recommande.
-- Tesseract OCR pour l'analyse d'images et le fallback OCR des PDF scannes.
-- PostgreSQL optionnel pour un environnement proche production.
+## Limites actuelles et prochaines étapes
+
+L’extraction de notions depuis un document reste heuristique. Lorsqu’aucun texte ou concept exploitable ne peut être extrait, l’API renvoie un état vide nécessitant une saisie manuelle ; elle n’invente pas de contenu TOEIC ni de fausse analyse.
+
+Les prochains incréments concernent les activités pratiques et preuves pour Excel, Power BI et programmation, puis les parcours réseau et cybersécurité fondés sur tâches et laboratoires autorisés. L’optimisation fine de la planification ne sera considérée qu’après un historique réel de revues.
+
+## Prérequis
+
+- Node.js 18 ou plus récent.
+- Python 3.12 recommandé.
+- Tesseract OCR pour l’analyse d’images et de PDF scannés.
+- PostgreSQL, optionnel en local et recommandé en production.
 
 ## Installation locale
 
@@ -60,111 +57,66 @@ npm install
 python -m venv .venv
 ```
 
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-```
-
-Linux/macOS:
+Sous Linux ou macOS :
 
 ```bash
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-Creer un fichier `.env` local. `DATABASE_URL` est optionnel en developpement:
-si la variable est absente, l'application utilise automatiquement
-`database/app.db`.
+Sous Windows PowerShell :
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Créez ensuite un fichier `.env`. En l’absence de `DATABASE_URL`, l’application utilise `database/app.db` en développement.
 
 ```env
 SECRET_KEY=dev-secret-change-me
 JWT_SECRET_KEY=dev-jwt-secret-change-me
-# Optionnel: DATABASE_URL=sqlite:///database/app.db
+# Optionnel : DATABASE_URL=sqlite:///database/app.db
 ```
 
-Pour PostgreSQL:
+Après une mise à jour du schéma, utilisez Alembic :
 
-```env
-DATABASE_URL=postgresql://user:password@host:5432/mentorbot
+```bash
+python -m flask --app main db upgrade
 ```
 
-## Lancement
+## Lancement et validation
 
-Backend Flask:
+Démarrez le backend puis le frontend dans deux terminaux :
 
 ```bash
 python main.py
-```
-
-Frontend Vite:
-
-```bash
 npm run dev
 ```
 
-Build frontend:
-
-```bash
-npm run build
-```
-
-Lint frontend:
-
-```bash
-npm run lint
-```
-
-## Tests
-
-Tests Flask rapides:
-
-```bash
-python -m pytest tests/test_backend_flask.py -q
-```
-
-Compilation Python:
+Les validations principales sont les suivantes :
 
 ```bash
 python -m compileall main.py src api backend tests
-```
-
-Migrations de base de donnees:
-
-```bash
-python -m flask db upgrade
-```
-
-Voir `docs/DATABASE.md` pour la configuration SQLite/PostgreSQL et la creation
-de nouvelles migrations.
-
-Audit npm:
-
-```bash
-npm audit --audit-level=moderate
+python -m pytest -q
+npm run lint
+npm run build
 ```
 
 ## API principale
 
-- `POST /api/user/register`
-- `POST /api/user/login`
-- `GET /api/health`
-- `POST /api/analysis/analyze-document`
-- `POST /api/analysis/generate-plan`
-- `POST /api/analysis/update-progress`
-- `POST /api/spaced-repetition/create-card`
-- `POST /api/spaced-repetition/review-card`
-- `GET /api/spaced-repetition/get-due-cards`
-- `GET /api/spaced-repetition/get-schedule`
-- `GET /api/learning/progress`
-- `GET /api/mastery/get-subjects`
+| Endpoint | Usage |
+|---|---|
+| `POST /api/user/register` et `POST /api/user/login` | Authentification |
+| `GET /api/mastery/catalog` | Catalogue de modèles et domaines, sans création automatique |
+| `POST /api/mastery/create-path` | Création explicite d’un parcours libre ou depuis un modèle |
+| `GET /api/mastery/get-subjects` | Parcours persistés de l’utilisateur |
+| `POST /api/analysis/analyze-document` | Extraction de texte et notions, avec retour honnête si une saisie est nécessaire |
+| `POST /api/spaced-repetition/create-card` | Création d’une carte |
+| `POST /api/spaced-repetition/review-card` | Revue FSRS avec note explicite |
+| `GET /api/spaced-repetition/get-due-cards` | Cartes réellement dues |
+| `GET /api/spaced-repetition/performance-analytics` | Analytics descriptifs de pratique |
 
-## Deploiement
+## Déploiement
 
-Le fichier `vercel.json` conserve un deploiement Vite + fonction Python Flask via
-`api/index.py`.
-
-Pour une production durable, configurer `DATABASE_URL` vers PostgreSQL. Sans cette
-variable, Vercel retombe sur SQLite dans `/tmp`, ce qui est uniquement un fallback
-temporaire.
+Le fichier `vercel.json` conserve un déploiement Vite avec fonction Flask via `api/index.py`. Pour une production durable, configurez `DATABASE_URL` vers PostgreSQL, installez `requirements-vercel.txt`, puis appliquez les migrations. SQLite dans `/tmp` sur Vercel reste un fallback temporaire, non une base de production.

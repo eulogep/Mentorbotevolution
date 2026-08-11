@@ -20,11 +20,14 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Compromis explicite entre rétention visée et volume quotidien de révisions.
+    desired_retention = db.Column(db.Float, default=0.90)
 
     # Relationships
     cards = db.relationship("Card", backref="owner", lazy=True)
     subjects = db.relationship("Subject", backref="owner", lazy=True)
     study_sessions = db.relationship("StudySession", backref="owner", lazy=True)
+    review_logs = db.relationship("ReviewLog", backref="owner", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -42,8 +45,16 @@ class Subject(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default="")
-    target_score = db.Column(db.Integer, default=800)
-    current_score = db.Column(db.Integer, default=0)
+    # Les scores sont conservés pour les parcours d’examen, mais ne servent pas
+    # à évaluer arbitrairement les parcours techniques ou professionnels.
+    target_score = db.Column(db.Integer, default=None, nullable=True)
+    current_score = db.Column(db.Integer, default=None, nullable=True)
+    domain = db.Column(db.String(50), default="general", nullable=False)
+    objective_type = db.Column(db.String(50), default="competency", nullable=False)
+    objective_label = db.Column(db.String(200), default="Compétence visée")
+    target_date = db.Column(db.Date, nullable=True)
+    weekly_hours = db.Column(db.Float, nullable=True)
+    source = db.Column(db.String(50), default="user_created", nullable=False)
     progress = db.Column(db.Float, default=0.0)  # 0.0 to 100.0
     status = db.Column(db.String(30), default="not_started")  # not_started, in_progress, mastered
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -60,6 +71,12 @@ class Subject(db.Model):
             "description": self.description,
             "target_score": self.target_score,
             "current_score": self.current_score,
+            "domain": self.domain,
+            "objective_type": self.objective_type,
+            "objective_label": self.objective_label,
+            "target_date": self.target_date.isoformat() if self.target_date else None,
+            "weekly_hours": self.weekly_hours,
+            "source": self.source,
             "progress": self.progress,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -78,6 +95,8 @@ class Concept(db.Model):
     name = db.Column(db.String(200), nullable=False)
     status = db.Column(db.String(30), default="not-started")  # not-started, in-progress, completed
     mastery = db.Column(db.Integer, default=0)  # 0 to 100
+    competency_type = db.Column(db.String(50), default="knowledge", nullable=False)
+    evidence_criterion = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -87,6 +106,8 @@ class Concept(db.Model):
             "name": self.name,
             "status": self.status,
             "mastery": self.mastery,
+            "competency_type": self.competency_type,
+            "evidence_criterion": self.evidence_criterion,
             "subject_id": self.subject_id,
         }
 
@@ -107,16 +128,24 @@ class Card(db.Model):
     tags = db.Column(db.Text, default="")  # Comma-separated tags
 
     # SM-2 algorithm fields
-    interval = db.Column(db.Integer, default=1)         # Current interval in days
+    interval = db.Column(db.Integer, default=1)         # Legacy full-day interval
+    interval_minutes = db.Column(db.Integer, nullable=True)  # Precise FSRS delay
     easiness_factor = db.Column(db.Float, default=2.5)   # EF (1.3 - 4.0)
     review_count = db.Column(db.Integer, default=0)
     success_count = db.Column(db.Integer, default=0)
     total_response_time = db.Column(db.Float, default=0.0)  # Cumulative seconds
 
+    # État du planificateur (FSRS). Les champs SM-2 précédents restent présents
+    # pour une migration progressive et la rétrocompatibilité des cartes existantes.
+    scheduler_type = db.Column(db.String(30), default="sm2")
+    scheduler_state = db.Column(db.Text, default="")
+    scheduler_version = db.Column(db.String(30), default="legacy")
+
     # Scheduling
     last_reviewed = db.Column(db.DateTime, nullable=True)
     next_review = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    review_logs = db.relationship("ReviewLog", backref="card", lazy=True, cascade="all, delete-orphan")
 
     @property
     def success_rate(self):
@@ -151,10 +180,13 @@ class Card(db.Model):
             "priority": self.priority,
             "tags": self.tags.split(",") if self.tags else [],
             "interval": self.interval,
+            "interval_minutes": self.interval_minutes,
             "easiness_factor": self.easiness_factor,
             "review_count": self.review_count,
             "success_rate": round(self.success_rate, 3),
             "average_response_time": round(self.average_response_time, 1),
+            "scheduler_type": self.scheduler_type,
+            "scheduler_version": self.scheduler_version,
             "last_reviewed": self.last_reviewed.isoformat() if self.last_reviewed else None,
             "next_review": self.next_review.isoformat() if self.next_review else None,
             "days_overdue": self.days_overdue,
@@ -163,6 +195,39 @@ class Card(db.Model):
 
     def __repr__(self):
         return f"<Card {self.concept_name}>"
+
+
+class ReviewLog(db.Model):
+    """Immutable audit trail for one spaced-repetition review."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    card_id = db.Column(db.Integer, db.ForeignKey("card.id"), nullable=False, index=True)
+    rating = db.Column(db.String(12), nullable=False)  # again, hard, good, easy
+    response_time = db.Column(db.Float, default=0.0)
+    retrievability_before = db.Column(db.Float, nullable=True)
+    # `scheduled_days` is retained for legacy reporting; `scheduled_minutes`
+    # preserves FSRS learning steps and is the source of truth for new reviews.
+    scheduled_days = db.Column(db.Integer, default=0)
+    scheduled_minutes = db.Column(db.Integer, nullable=True)
+    scheduler_version = db.Column(db.String(30), default="fsrs-6")
+    previous_state = db.Column(db.Text, default="")
+    review_log = db.Column(db.Text, default="")
+    next_state = db.Column(db.Text, default="")
+    reviewed_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "card_id": self.card_id,
+            "rating": self.rating,
+            "response_time": self.response_time,
+            "retrievability_before": self.retrievability_before,
+            "scheduled_days": self.scheduled_days,
+            "scheduled_minutes": self.scheduled_minutes,
+            "scheduler_version": self.scheduler_version,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+        }
 
 
 class StudySession(db.Model):
