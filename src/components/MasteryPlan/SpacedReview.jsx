@@ -72,6 +72,7 @@ const SpacedReview = () => {
       setFeedback({
         ...data.feedback,
         nextReviewAt: data.next_review_at,
+        nextReviewInMinutes: data.next_review_in_minutes,
         retentionTarget: data.retention_target,
         memoryState: data.memory_state,
       });
@@ -115,6 +116,10 @@ const SpacedReview = () => {
 
   const question = current.front_content || current.concept_name;
   const correction = current.back_content || 'Aucune correction n’a encore été renseignée pour cette carte.';
+  const retentionPercent = Number.isFinite(Number(feedback?.retentionTarget)) ? Math.round(Number(feedback.retentionTarget) * 100) : null;
+  const nextReviewLabel = feedback?.nextReviewAt && !Number.isNaN(Date.parse(feedback.nextReviewAt))
+    ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(feedback.nextReviewAt))
+    : null;
 
   return (
     <div className="space-y-5">
@@ -149,8 +154,9 @@ const SpacedReview = () => {
 
           {!revealed ? (
             <section aria-labelledby="answer-title">
-              <label id="answer-title" className="mb-2 block text-sm font-semibold text-slate-800">Votre réponse, avec vos propres mots</label>
+              <label id="answer-title" htmlFor="active-recall-answer" className="mb-2 block text-sm font-semibold text-slate-800">Votre réponse, avec vos propres mots</label>
               <Textarea
+                id="active-recall-answer"
                 value={answer}
                 onChange={(event) => setAnswer(event.target.value)}
                 placeholder="Écrivez ce dont vous vous souvenez avant de révéler la correction…"
@@ -183,7 +189,8 @@ const SpacedReview = () => {
                     <p className="font-semibold text-sky-950">{feedback.message}</p>
                     <p className="mt-1 text-sm text-sky-800">{feedback.tip}</p>
                     <p className="mt-3 text-sm font-medium text-sky-950">{feedback.next_action}</p>
-                    <p className="mt-1 text-xs text-sky-700">Rétention cible : {Math.round(feedback.retentionTarget * 100)} %. Stabilité estimée : {feedback.memoryState?.stability_days || '—'} jours.</p>
+                    {nextReviewLabel && <p className="mt-1 text-xs text-sky-700">Échéance exacte : {nextReviewLabel}{Number.isFinite(Number(feedback.nextReviewInMinutes)) ? ` (${feedback.nextReviewInMinutes} minute(s))` : ''}.</p>}
+                    <p className="mt-1 text-xs text-sky-700">Rétention cible : {retentionPercent === null ? '—' : `${retentionPercent} %`}. Stabilité estimée : {feedback.memoryState?.stability_days ?? '—'} jours.</p>
                   </div></div>
                   <Button className="mt-4" onClick={nextCard}>Carte suivante<ChevronRight className="ml-1 h-4 w-4" /></Button>
                 </section>

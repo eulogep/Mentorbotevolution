@@ -108,7 +108,11 @@ def review_with_fsrs(
     due_at = _to_utc(updated_card.due)
     reviewed_at = _to_utc(review_log.review_datetime)
     delta_seconds = max(0.0, (due_at - reviewed_at).total_seconds())
-    scheduled_days = max(1, math.ceil(delta_seconds / 86400))
+    # FSRS peut planifier des pas d’apprentissage de quelques minutes. La durée
+    # en minutes est donc la source de vérité ; le nombre de jours complets est
+    # uniquement conservé pour les anciens consommateurs du champ `interval`.
+    scheduled_minutes = math.ceil(delta_seconds / 60)
+    scheduled_days = math.floor(scheduled_minutes / 1440)
 
     return {
         "card_state": updated_card.to_json(),
@@ -119,6 +123,8 @@ def review_with_fsrs(
         "due_at": _to_naive_utc(due_at),
         "reviewed_at": _to_naive_utc(reviewed_at),
         "scheduled_days": scheduled_days,
+        "scheduled_minutes": scheduled_minutes,
+        "scheduled_days_exact": round(delta_seconds / 86400, 4),
         "retention_target": retention,
         "memory_state": {
             "state": updated_card.state.name.lower(),
@@ -128,7 +134,7 @@ def review_with_fsrs(
     }
 
 
-def describe_rating(rating_name: str, scheduled_days: int) -> dict[str, Any]:
+def describe_rating(rating_name: str, scheduled_minutes: int) -> dict[str, Any]:
     """Return concise, non-deceptive pedagogical feedback for one review."""
     descriptions = {
         "again": {
@@ -149,5 +155,11 @@ def describe_rating(rating_name: str, scheduled_days: int) -> dict[str, Any]:
         },
     }
     feedback = descriptions[rating_name].copy()
-    feedback["next_action"] = f"Prochaine récupération prévue dans environ {scheduled_days} jour(s)."
+    if scheduled_minutes < 1:
+        delay_label = "moins d’une minute"
+    elif scheduled_minutes < 1440:
+        delay_label = f"environ {scheduled_minutes} minute(s)"
+    else:
+        delay_label = f"environ {round(scheduled_minutes / 1440, 1)} jour(s)"
+    feedback["next_action"] = f"Prochaine récupération prévue dans {delay_label}."
     return feedback

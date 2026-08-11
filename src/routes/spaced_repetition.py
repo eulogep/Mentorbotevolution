@@ -111,6 +111,7 @@ def review_card():
         card.scheduler_state = result["card_state"]
         card.scheduler_version = FSRS_VERSION
         card.interval = result["scheduled_days"]
+        card.interval_minutes = result["scheduled_minutes"]
         card.review_count += 1
         if rating_name != "again":
             card.success_count += 1
@@ -125,6 +126,7 @@ def review_card():
             response_time=response_time,
             retrievability_before=result["retrievability_before"],
             scheduled_days=result["scheduled_days"],
+            scheduled_minutes=result["scheduled_minutes"],
             scheduler_version=FSRS_VERSION,
             previous_state=result["previous_state"],
             review_log=result["review_log"],
@@ -133,13 +135,14 @@ def review_card():
         ))
         db.session.commit()
 
-        feedback = describe_rating(rating_name, result["scheduled_days"])
+        feedback = describe_rating(rating_name, result["scheduled_minutes"])
         return jsonify({
             "status": "success",
             "updated_card": card.to_dict(),
             "feedback": feedback,
             "rating": rating_name,
-            "next_review_in_days": result["scheduled_days"],
+            "next_review_in_days": result["scheduled_days_exact"],
+            "next_review_in_minutes": result["scheduled_minutes"],
             "next_review_at": card.next_review.isoformat(),
             "retention_target": result["retention_target"],
             "memory_state": result["memory_state"],

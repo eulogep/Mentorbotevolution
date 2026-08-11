@@ -128,7 +128,8 @@ class Card(db.Model):
     tags = db.Column(db.Text, default="")  # Comma-separated tags
 
     # SM-2 algorithm fields
-    interval = db.Column(db.Integer, default=1)         # Current interval in days
+    interval = db.Column(db.Integer, default=1)         # Legacy full-day interval
+    interval_minutes = db.Column(db.Integer, nullable=True)  # Precise FSRS delay
     easiness_factor = db.Column(db.Float, default=2.5)   # EF (1.3 - 4.0)
     review_count = db.Column(db.Integer, default=0)
     success_count = db.Column(db.Integer, default=0)
@@ -179,6 +180,7 @@ class Card(db.Model):
             "priority": self.priority,
             "tags": self.tags.split(",") if self.tags else [],
             "interval": self.interval,
+            "interval_minutes": self.interval_minutes,
             "easiness_factor": self.easiness_factor,
             "review_count": self.review_count,
             "success_rate": round(self.success_rate, 3),
@@ -204,7 +206,10 @@ class ReviewLog(db.Model):
     rating = db.Column(db.String(12), nullable=False)  # again, hard, good, easy
     response_time = db.Column(db.Float, default=0.0)
     retrievability_before = db.Column(db.Float, nullable=True)
+    # `scheduled_days` is retained for legacy reporting; `scheduled_minutes`
+    # preserves FSRS learning steps and is the source of truth for new reviews.
     scheduled_days = db.Column(db.Integer, default=0)
+    scheduled_minutes = db.Column(db.Integer, nullable=True)
     scheduler_version = db.Column(db.String(30), default="fsrs-6")
     previous_state = db.Column(db.Text, default="")
     review_log = db.Column(db.Text, default="")
@@ -219,6 +224,7 @@ class ReviewLog(db.Model):
             "response_time": self.response_time,
             "retrievability_before": self.retrievability_before,
             "scheduled_days": self.scheduled_days,
+            "scheduled_minutes": self.scheduled_minutes,
             "scheduler_version": self.scheduler_version,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
         }

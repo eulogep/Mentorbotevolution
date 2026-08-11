@@ -16,8 +16,8 @@
 
 | Référence | Élément vérifié | Décision d’architecture envisagée |
 |---|---|---|
-| [FSRS4Anki — The Algorithm](https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm) | La documentation de référence renvoie aux travaux « A Stochastic Shortest Path Algorithm for Optimizing Spaced Repetition Scheduling » et « Optimizing Spaced Repetition Schedule by Capturing the Dynamics of Memory », ainsi qu’à des jeux de données ouverts de journaux de révision. | Ne pas réimplémenter le modèle de recherche dans la première itération. Concevoir une couche de planification remplaçable, des journaux de revue complets et des paramètres explicitement versionnés afin de permettre une migration ultérieure vers une implémentation FSRS validée. |
-| [Awesome FSRS Wiki](https://github.com/open-spaced-repetition/awesome-fsrs/wiki/) | Le projet rassemble une documentation dédiée aux mécanismes, à l’optimisation, aux métriques et aux benchmarks. | Utiliser FSRS comme référence de conception, pas comme promesse marketing ; toute intégration devra passer par une bibliothèque compatible et une revue de licence. |
+| [FSRS4Anki — The Algorithm](https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm) | La documentation de référence renvoie aux travaux « A Stochastic Shortest Path Algorithm for Optimizing Spaced Repetition Scheduling » et « Optimizing Spaced Repetition Schedule by Capturing the Dynamics of Memory », ainsi qu’à des jeux de données ouverts de journaux de révision. | Décision appliquée : ne pas réimplémenter le modèle de recherche. La couche `fsrs_scheduler` utilise la bibliothèque Py-FSRS, conserve les journaux de revue et versionne l’état de planification. |
+| [Awesome FSRS Wiki](https://github.com/open-spaced-repetition/awesome-fsrs/wiki/) | Le projet rassemble une documentation dédiée aux mécanismes, à l’optimisation, aux métriques et aux benchmarks. | FSRS est employé avec une communication prudente : la planification est expliquée, les poids ne sont pas optimisés sans historique suffisant et la licence MIT de Py-FSRS a été vérifiée pour l’intégration. |
 
 ## Conception pédagogique — sources académiques
 
@@ -45,7 +45,7 @@ Source : [Clinton-Lisell & Litzinger, 2024](https://www.frontiersin.org/journals
 
 | Vérification | Résultat | Décision |
 |---|---|---|
-| Paquet | `fsrs` 6.3.2 (Py-FSRS), Python ≥ 3.10, licence MIT. | Compatible avec les runtimes Python 3.11/3.12 du projet et sans conflit de licence identifié. |
+| Paquet | `fsrs` 6.3.2 (Py-FSRS), Python ≥ 3.10, licence MIT. | Validé localement avec Python 3.12 et sans conflit de licence identifié. L’environnement de déploiement doit conserver une version Python compatible ≥ 3.10. |
 | Contrat principal | Une `Card` est mise à jour via `Scheduler.review_card(card, rating)` ; `Rating` distingue *Again*, *Hard*, *Good* et *Easy*. Les objets `Card` et `ReviewLog` sont sérialisables en JSON. | Stocker l’état FSRS par carte sous forme de JSON et journaliser les résultats de révision. Conserver les champs SM-2 existants le temps de la migration pour une compatibilité graduelle. |
 | Personnalisation | La documentation conseille de ne pas modifier manuellement les poids par défaut. La rétention cible est le paramètre utilisateur pertinent ; l’optimisation requiert un historique de journaux. | Proposer une rétention cible explicite (par défaut 90 %) et ne pas prétendre à une personnalisation ML avant un volume d’historique suffisant. |
 

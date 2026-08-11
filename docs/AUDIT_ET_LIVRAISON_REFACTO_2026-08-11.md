@@ -65,7 +65,7 @@ Les tests existants produisent encore **43 avertissements**, principalement lié
 
 ## Sécurité et dette technique résiduelle
 
-L’audit des dépendances de production signale **deux vulnérabilités modérées**, aucune élevée ni critique. Elles concernent `react-router` / `react-router-dom` et les avis GHSA liés à l’open redirect et à l’hydratation SSR. Le projet est une SPA Vite et n’utilise pas le chemin SSR identifié, mais la dépendance demeure à mettre à niveau dans une itération isolée après vérification de la compatibilité React Router v7. [7] [8] [9]
+L’audit des dépendances de production signale **deux dépendances affectées** (`react-router` et `react-router-dom`) et **trois avis GHSA modérés**, sans niveau élevé ni critique. Deux avis concernent des redirections ouvertes dans React Router ; le troisième concerne l’hydratation SSR. Le projet est une SPA Vite et n’emploie pas le chemin SSR identifié, mais les deux dépendances restent à mettre à niveau dans une itération isolée après vérification de la compatibilité React Router v7. [7] [8] [9]
 
 | Sujet à traiter ensuite | Décision recommandée | Motif |
 |---|---|---|

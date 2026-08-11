@@ -48,7 +48,15 @@ const MasteryDashboard = () => {
     }
   }, [token]);
 
-  useEffect(() => { if (token) refreshDashboard(); }, [token, refreshDashboard]);
+  useEffect(() => {
+    if (token) {
+      refreshDashboard();
+      return;
+    }
+    setSubjects([]);
+    setDueCount(0);
+    setLoading(false);
+  }, [token, refreshDashboard]);
 
   const handleUploadComplete = (documents) => {
     setAnalyzedDocs(documents || []);

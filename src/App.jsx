@@ -45,12 +45,12 @@ function App() {
             <span className="max-w-52 truncate text-sm text-slate-600">{user?.email || 'Utilisateur'}</span>
             <Button onClick={logout} variant="outline" size="sm"><LogOut className="mr-2 h-4 w-4" />Déconnexion</Button>
           </div>
-          <button onClick={() => setMobileMenuOpen((open) => !open)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 sm:hidden" aria-label="Ouvrir le menu">
+          <button onClick={() => setMobileMenuOpen((open) => !open)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 sm:hidden" aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'} aria-expanded={mobileMenuOpen} aria-controls="mobile-account-menu">
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
         {mobileMenuOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 py-3 sm:hidden">
+          <div id="mobile-account-menu" className="border-t border-slate-100 bg-white px-4 py-3 sm:hidden">
             <p className="truncate px-2 py-2 text-sm text-slate-600">{user?.email || 'Utilisateur'}</p>
             <Button onClick={logout} variant="outline" size="sm" className="w-full"><LogOut className="mr-2 h-4 w-4" />Déconnexion</Button>
           </div>

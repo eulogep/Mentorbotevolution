@@ -1,5 +1,7 @@
 import json
 
+import math
+
 import pytest
 
 from src.services.fsrs_scheduler import (
@@ -31,16 +33,20 @@ def test_desired_retention_is_bounded():
     assert normalize_desired_retention(2) == 0.97
 
 
-def test_fsrs_review_generates_serializable_state_and_a_future_due_date():
-    rating_name, rating = normalize_rating({"rating": "good"})
-    assert rating_name == "good"
+def test_fsrs_review_preserves_a_subday_learning_interval():
+    rating_name, rating = normalize_rating({"rating": "again"})
+    assert rating_name == "again"
 
     result = review_with_fsrs("", rating, 0.90)
 
     state = json.loads(result["card_state"])
     log = json.loads(result["review_log"])
+    delta_seconds = (result["due_at"] - result["reviewed_at"]).total_seconds()
     assert state["state"] in {1, 2, 3}
-    assert log["rating"] == 3
-    assert result["scheduled_days"] >= 1
+    assert log["rating"] == 1
     assert result["due_at"] > result["reviewed_at"]
+    assert result["scheduled_minutes"] == math.ceil(delta_seconds / 60)
+    assert 0 < result["scheduled_minutes"] < 1440
+    assert result["scheduled_days"] == 0
+    assert result["scheduled_days_exact"] == pytest.approx(delta_seconds / 86400, abs=0.0001)
     assert 0 <= result["retrievability_after"] <= 1
