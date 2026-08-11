@@ -12,7 +12,7 @@ os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-with-enough-length-for-hs256"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from main import app, get_database_uri, should_auto_create_tables  # noqa: E402
-from src.models.user import Concept, StudySession, Subject, db  # noqa: E402
+from src.models.user import Card, Concept, StudySession, Subject, db  # noqa: E402
 from src.utils import document_extraction  # noqa: E402
 
 
@@ -287,11 +287,38 @@ def test_custom_learning_path_supports_goal_and_deadline(client, auth_headers):
     assert subject["concepts"][0]["competency_type"] == "procedure"
 
 
+def test_toeic_template_creates_original_starter_cards(client, auth_headers):
+    response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={"template_id": "toeic-foundations"},
+    )
+
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert payload["starter_pack"]["id"] == "toeic-business-vocabulary-foundations-v1"
+    assert payload["starter_pack"]["cards_created"] == 36
+    assert payload["starter_pack"]["learning_domain"] == "language"
+
+    subject_id = payload["subject"]["id"]
+    cards = Card.query.filter_by(subject_id=subject_id).all()
+    assert len(cards) == 36
+    assert {card.learning_domain for card in cards} == {"language"}
+    assert all("toeic" in card.tags.split(",") for card in cards)
+    assert all(card.next_review is not None for card in cards)
+
+
 def test_adaptive_profiles_filter_sessions_and_apply_domain_retention(client, auth_headers):
     language_path_response = client.post(
         "/api/mastery/create-path",
         headers=auth_headers,
-        json={"template_id": "toeic-foundations"},
+        json={
+            "name": "Anglais professionnel de contrôle",
+            "domain": "language",
+            "description": "Parcours isolé pour vérifier le filtrage adaptatif.",
+            "objective_type": "competency",
+            "objective_label": "Réviser une carte de vocabulaire.",
+        },
     )
     computing_path_response = client.post(
         "/api/mastery/create-path",

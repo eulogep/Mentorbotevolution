@@ -94,8 +94,9 @@ const PlanGenerator = ({ onPlanGenerated }) => {
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       const response = await axios.post('/api/mastery/create-path', payload, config);
       if (response.data.status !== 'success') throw new Error(response.data.message || 'Création impossible');
-      setCreatedPath(response.data.subject);
-      onPlanGenerated?.(response.data.subject);
+      const createdSubject = { ...response.data.subject, starterPack: response.data.starter_pack || null };
+      setCreatedPath(createdSubject);
+      onPlanGenerated?.(createdSubject);
     } catch (requestError) {
       setError(requestError.message || 'Impossible de créer le parcours.');
     } finally {
@@ -152,7 +153,7 @@ const PlanGenerator = ({ onPlanGenerated }) => {
         </CardContent>
       </Card>
 
-      {createdPath && <Card className="border-emerald-200 bg-emerald-50 shadow-sm"><CardContent className="flex gap-3 p-5"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" /><div><p className="font-semibold text-emerald-950">Parcours créé : {createdPath.name}</p><p className="mt-1 text-sm text-emerald-900">Vous pouvez maintenant sélectionner une notion, importer vos propres ressources, puis créer les cartes ou activités pertinentes.</p></div></CardContent></Card>}
+      {createdPath && <Card className="border-emerald-200 bg-emerald-50 shadow-sm"><CardContent className="flex gap-3 p-5"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" /><div><p className="font-semibold text-emerald-950">Parcours créé : {createdPath.name}</p>{createdPath.starterPack ? <p className="mt-1 text-sm text-emerald-900">{createdPath.starterPack.cards_created} cartes de vocabulaire professionnel ont été ajoutées pour démarrer les révisions. Elles constituent un socle éditorial à compléter par vos propres contenus, l’écoute et la pratique.</p> : <p className="mt-1 text-sm text-emerald-900">Vous pouvez maintenant sélectionner une notion, importer vos propres ressources, puis créer les cartes ou activités pertinentes.</p>}</div></CardContent></Card>}
     </div>
   );
 };
