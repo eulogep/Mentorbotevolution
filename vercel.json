@@ -4,6 +4,11 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "src/content/listening_audio/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

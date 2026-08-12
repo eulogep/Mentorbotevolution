@@ -12,9 +12,20 @@ os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-with-enough-length-for-hs256"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from main import app, get_database_uri, should_auto_create_tables  # noqa: E402
+from src.content.toeic_listening_conversations_talks import (  # noqa: E402
+    get_toeic_listening_conversations_talks_item,
+)
 from src.content.toeic_listening_question_response import get_toeic_listening_question_response_item  # noqa: E402
 from src.content.toeic_reading_diagnostic import get_diagnostic_item  # noqa: E402
-from src.models.user import Card, Concept, DiagnosticResponse, StudySession, Subject, db  # noqa: E402
+from src.models.user import (  # noqa: E402
+    Card,
+    Concept,
+    DiagnosticResponse,
+    DiagnosticStimulusPlayback,
+    StudySession,
+    Subject,
+    db,
+)
 from src.utils import document_extraction  # noqa: E402
 
 
@@ -598,3 +609,189 @@ def test_toeic_listening_question_response_hides_scripts_requires_play_and_creat
     assert duplicate_response.status_code == 201
     assert duplicate_response.get_json()["created_count"] == 0
     assert Card.query.filter_by(subject_id=subject_id).count() == 3
+
+
+def test_shared_listening_stimuli_require_server_playback_and_delay_review(client, auth_headers):
+    path_response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={
+            "name": "Listening partagé TOEIC",
+            "domain": "language",
+            "description": "Parcours de test pour conversations et présentations originales.",
+            "objective_type": "competency",
+            "objective_label": "Comprendre des échanges professionnels courts.",
+        },
+    )
+    assert path_response.status_code == 201
+    subject_id = path_response.get_json()["subject"]["id"]
+
+    catalog_response = client.get(
+        "/api/diagnostic/toeic-listening-conversations-talks",
+        headers=auth_headers,
+    )
+    assert catalog_response.status_code == 200
+    assert catalog_response.headers["Cache-Control"] == "no-store"
+    catalog = catalog_response.get_json()
+    assert catalog["diagnostic"]["id"] == "toeic-listening-conversations-talks-v1"
+    assert len(catalog["stimuli"]) == 4
+    assert len(catalog["items"]) == 8
+    for stimulus in catalog["stimuli"]:
+        assert stimulus["audio_status"] == "available"
+        assert stimulus["audio_duration_seconds"] > 0
+        assert "audio_url" not in stimulus
+        assert "asset_filename" not in stimulus
+        assert "speaker_transcript" not in stimulus
+    for item in catalog["items"]:
+        assert "choices" not in item
+        assert "correct_index" not in item
+        assert "explanation" not in item
+        assert "remediation" not in item
+
+    start_response = client.post(
+        "/api/diagnostic/toeic-listening-conversations-talks/start",
+        headers=auth_headers,
+        json={"subject_id": subject_id},
+    )
+    assert start_response.status_code == 201
+    assert start_response.headers["Cache-Control"] == "no-store"
+    started = start_response.get_json()
+    attempt_id = started["attempt"]["id"]
+    assert started["attempt"]["content_version"] == "1.0.0"
+    assert all("speaker_transcript" not in stimulus for stimulus in started["stimuli"])
+    assert all("asset_filename" not in stimulus for stimulus in started["stimuli"])
+    assert all(stimulus["audio_url"].startswith(f"/api/diagnostic/attempts/{attempt_id}/stimuli/") for stimulus in started["stimuli"])
+    assert all("choices" not in item for item in started["items"])
+
+    blocked_audio = client.get(started["stimuli"][0]["audio_url"], headers=auth_headers)
+    assert blocked_audio.status_code == 409
+
+    other_suffix = uuid.uuid4().hex[:8]
+    other_payload = {
+        "username": f"other_{other_suffix}",
+        "email": f"other_{other_suffix}@example.com",
+        "password": "password123",
+    }
+    assert client.post("/api/user/register", json=other_payload).status_code == 201
+    other_login = client.post(
+        "/api/user/login",
+        json={"email": other_payload["email"], "password": other_payload["password"]},
+    )
+    assert other_login.status_code == 200
+    other_headers = {"Authorization": f"Bearer {other_login.get_json()['access_token']}"}
+    assert client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/stimuli/conversation-01/playback",
+        headers=other_headers,
+        json={},
+    ).status_code == 404
+    assert client.get(
+        f"/api/diagnostic/attempts/{attempt_id}/listening-review",
+        headers=other_headers,
+    ).status_code == 404
+    assert client.get(started["stimuli"][0]["audio_url"], headers=other_headers).status_code == 404
+
+    premature_review = client.get(
+        f"/api/diagnostic/attempts/{attempt_id}/listening-review",
+        headers=auth_headers,
+    )
+    assert premature_review.status_code == 409
+    assert "transcript" not in premature_review.get_data(as_text=True).lower()
+
+    responses = []
+    for public_item in started["items"]:
+        private_item = get_toeic_listening_conversations_talks_item(public_item["id"])
+        responses.append({
+            "item_id": private_item["id"],
+            "selected_index": (private_item["correct_index"] + 1) % len(private_item["choices"]),
+            "response_time_seconds": 5,
+            "confidence": 2,
+        })
+
+    client_managed_playback = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/submit",
+        headers=auth_headers,
+        json={
+            "responses": [{**response, "play_count": 1} for response in responses],
+            "duration_seconds": 90,
+        },
+    )
+    assert client_managed_playback.status_code == 400
+    assert "server-managed" in client_managed_playback.get_json()["message"]
+
+    missing_playback = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/submit",
+        headers=auth_headers,
+        json={"responses": responses, "duration_seconds": 90},
+    )
+    assert missing_playback.status_code == 400
+    assert "Listen to each audio stimulus" in missing_playback.get_json()["message"]
+
+    for stimulus in started["stimuli"]:
+        playback_response = client.post(
+            f"/api/diagnostic/attempts/{attempt_id}/stimuli/{stimulus['id']}/playback",
+            headers=auth_headers,
+            json={},
+        )
+        assert playback_response.status_code == 201
+        assert playback_response.headers["Cache-Control"] == "no-store"
+        playback_payload = playback_response.get_json()["playback"]
+        assert playback_payload["play_count"] == 1
+        audio_response = client.get(playback_payload["audio_url"], headers=auth_headers)
+        assert audio_response.status_code == 200
+        assert audio_response.headers["Cache-Control"] == "no-store"
+        assert audio_response.mimetype == "audio/wav"
+        assert audio_response.data.startswith(b"RIFF")
+
+    duplicate_playback = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/stimuli/conversation-01/playback",
+        headers=auth_headers,
+        json={},
+    )
+    assert duplicate_playback.status_code == 409
+
+    submit_response = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/submit",
+        headers=auth_headers,
+        json={"responses": responses, "duration_seconds": 90},
+    )
+    assert submit_response.status_code == 200
+    assert submit_response.headers["Cache-Control"] == "no-store"
+    submitted = submit_response.get_json()
+    assert submitted["attempt"]["status"] == "completed"
+    assert submitted["attempt"]["correct_count"] == 0
+    assert "review_stimuli" not in submitted
+    assert "speaker_transcript" not in submit_response.get_data(as_text=True)
+
+    playbacks = DiagnosticStimulusPlayback.query.filter_by(attempt_id=attempt_id).all()
+    assert len(playbacks) == 4
+    assert {playback.play_count for playback in playbacks} == {1}
+    saved_responses = DiagnosticResponse.query.filter_by(attempt_id=attempt_id).all()
+    assert len(saved_responses) == 8
+    assert {response.stimulus_id for response in saved_responses} == {
+        "conversation-01", "conversation-02", "talk-01", "talk-02"
+    }
+    assert {response.play_count for response in saved_responses} == {1}
+    assert all(response.script_version == "1.0.0" for response in saved_responses)
+    assert all(response.audio_duration_seconds > 0 for response in saved_responses)
+
+    review_response = client.get(
+        f"/api/diagnostic/attempts/{attempt_id}/listening-review",
+        headers=auth_headers,
+    )
+    assert review_response.status_code == 200
+    assert review_response.headers["Cache-Control"] == "no-store"
+    review = review_response.get_json()
+    assert len(review["review_stimuli"]) == 4
+    assert all(len(stimulus["items"]) == 2 for stimulus in review["review_stimuli"])
+    assert all(stimulus["speaker_transcript"] for stimulus in review["review_stimuli"])
+    assert all(stimulus["audio_url"].startswith(f"/api/diagnostic/attempts/{attempt_id}/stimuli/") for stimulus in review["review_stimuli"])
+    assert client.get(review["review_stimuli"][0]["audio_url"], headers=other_headers).status_code == 404
+
+    remediation_response = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/create-remediation",
+        headers=auth_headers,
+        json={"targets": ["listening_detail"]},
+    )
+    assert remediation_response.status_code == 201
+    assert remediation_response.get_json()["created_count"] == 2
+    assert Card.query.filter_by(subject_id=subject_id).count() == 2

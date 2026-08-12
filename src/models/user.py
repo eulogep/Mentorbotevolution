@@ -264,6 +264,7 @@ class DiagnosticAttempt(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     subject_id = db.Column(db.Integer, db.ForeignKey("subject.id"), nullable=True, index=True)
     diagnostic_id = db.Column(db.String(100), nullable=False, index=True)
+    content_version = db.Column(db.String(32), nullable=True)
     status = db.Column(db.String(20), nullable=False, default="in_progress")
     total_items = db.Column(db.Integer, nullable=False, default=0)
     correct_count = db.Column(db.Integer, nullable=False, default=0)
@@ -271,6 +272,7 @@ class DiagnosticAttempt(db.Model):
     started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     completed_at = db.Column(db.DateTime, nullable=True)
     responses = db.relationship("DiagnosticResponse", backref="attempt", lazy=True, cascade="all, delete-orphan")
+    stimulus_playbacks = db.relationship("DiagnosticStimulusPlayback", backref="attempt", lazy=True, cascade="all, delete-orphan")
 
     @property
     def accuracy(self):
@@ -283,6 +285,7 @@ class DiagnosticAttempt(db.Model):
             "id": self.id,
             "subject_id": self.subject_id,
             "diagnostic_id": self.diagnostic_id,
+            "content_version": self.content_version,
             "status": self.status,
             "total_items": self.total_items,
             "correct_count": self.correct_count,
@@ -302,7 +305,10 @@ class DiagnosticResponse(db.Model):
     task_type = db.Column(db.String(50), nullable=False)
     target = db.Column(db.String(50), nullable=False, index=True)
     scenario = db.Column(db.String(100), nullable=False)
+    stimulus_id = db.Column(db.String(100), nullable=True)
     audio_id = db.Column(db.String(100), nullable=True)
+    script_version = db.Column(db.String(32), nullable=True)
+    audio_duration_seconds = db.Column(db.Float, nullable=True)
     play_count = db.Column(db.Integer, nullable=True)
     selected_index = db.Column(db.Integer, nullable=True)
     is_correct = db.Column(db.Boolean, nullable=False)
@@ -317,13 +323,43 @@ class DiagnosticResponse(db.Model):
             "task_type": self.task_type,
             "target": self.target,
             "scenario": self.scenario,
+            "stimulus_id": self.stimulus_id,
             "audio_id": self.audio_id,
+            "script_version": self.script_version,
+            "audio_duration_seconds": self.audio_duration_seconds,
             "play_count": self.play_count,
             "selected_index": self.selected_index,
             "is_correct": self.is_correct,
             "response_time_seconds": self.response_time_seconds,
             "confidence": self.confidence,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class DiagnosticStimulusPlayback(db.Model):
+    """Authoritative, auditable playback record for one shared Listening stimulus."""
+
+    __table_args__ = (
+        db.UniqueConstraint("attempt_id", "stimulus_id", name="uq_diagnostic_stimulus_playback_attempt_stimulus"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    attempt_id = db.Column(db.Integer, db.ForeignKey("diagnostic_attempt.id"), nullable=False, index=True)
+    stimulus_id = db.Column(db.String(100), nullable=False)
+    audio_id = db.Column(db.String(100), nullable=False)
+    script_version = db.Column(db.String(32), nullable=False)
+    audio_duration_seconds = db.Column(db.Float, nullable=True)
+    play_count = db.Column(db.Integer, nullable=False, default=0)
+    first_played_at = db.Column(db.DateTime, nullable=True)
+    last_played_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            "stimulus_id": self.stimulus_id,
+            "audio_id": self.audio_id,
+            "play_count": self.play_count,
+            "first_played_at": self.first_played_at.isoformat() if self.first_played_at else None,
+            "last_played_at": self.last_played_at.isoformat() if self.last_played_at else None,
         }
 
 
