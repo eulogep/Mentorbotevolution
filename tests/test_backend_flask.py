@@ -12,6 +12,7 @@ os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-with-enough-length-for-hs256"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from main import app, get_database_uri, should_auto_create_tables  # noqa: E402
+from src.content.toeic_listening_question_response import get_toeic_listening_question_response_item  # noqa: E402
 from src.content.toeic_reading_diagnostic import get_diagnostic_item  # noqa: E402
 from src.models.user import Card, Concept, StudySession, Subject, db  # noqa: E402
 from src.utils import document_extraction  # noqa: E402
@@ -473,3 +474,112 @@ def test_toeic_reading_diagnostic_records_results_and_creates_remediation(client
     assert duplicate_response.status_code == 201
     assert duplicate_response.get_json()["created_count"] == 0
     assert duplicate_response.get_json()["skipped_count"] == 5
+
+
+def test_toeic_listening_question_response_hides_scripts_requires_play_and_creates_remediation(client, auth_headers):
+    path_response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={
+            "name": "Diagnostic écoute TOEIC",
+            "domain": "language",
+            "description": "Parcours de contrôle du diagnostic d’écoute original.",
+            "objective_type": "competency",
+            "objective_label": "Comprendre de courts échanges professionnels.",
+        },
+    )
+    assert path_response.status_code == 201
+    subject_id = path_response.get_json()["subject"]["id"]
+
+    public_response = client.get(
+        "/api/diagnostic/toeic-listening-question-response",
+        headers=auth_headers,
+    )
+    assert public_response.status_code == 200
+    public_items = public_response.get_json()["items"]
+    assert len(public_items) == 4
+    assert public_items[0]["audio_id"] == "lqr-01"
+    assert public_items[0]["audio_status"] == "available"
+    for public_item in public_items:
+        assert "choices" not in public_item
+        assert "transcript" not in public_item
+        assert "correct_index" not in public_item
+        assert "explanation" not in public_item
+        assert "remediation" not in public_item
+
+    start_response = client.post(
+        "/api/diagnostic/toeic-listening-question-response/start",
+        headers=auth_headers,
+        json={"subject_id": subject_id},
+    )
+    assert start_response.status_code == 201
+    start_payload = start_response.get_json()
+    assert start_payload["diagnostic"]["id"] == "toeic-listening-question-response-v1"
+    assert len(start_payload["items"]) == 4
+    assert "transcript" not in start_payload["items"][0]
+    assert "choices" not in start_payload["items"][0]
+
+    missing_play_responses = []
+    for public_item in start_payload["items"]:
+        item = get_toeic_listening_question_response_item(public_item["id"])
+        missing_play_responses.append({
+            "item_id": item["id"],
+            "selected_index": item["correct_index"],
+            "response_time_seconds": 4,
+        })
+    missing_play_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/submit",
+        headers=auth_headers,
+        json={"responses": missing_play_responses, "duration_seconds": 60},
+    )
+    assert missing_play_response.status_code == 400
+    assert "Listen to each audio item" in missing_play_response.get_json()["message"]
+
+    responses = []
+    for public_item in start_payload["items"]:
+        item = get_toeic_listening_question_response_item(public_item["id"])
+        selected_index = item["correct_index"]
+        if item["id"] in {"lqr-01", "lqr-02", "lqr-04"}:
+            selected_index = (selected_index + 1) % len(item["choices"])
+        responses.append({
+            "item_id": item["id"],
+            "selected_index": selected_index,
+            "response_time_seconds": 4,
+            "confidence": 2,
+            "play_count": 1,
+        })
+
+    submit_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/submit",
+        headers=auth_headers,
+        json={"responses": responses, "duration_seconds": 90},
+    )
+    assert submit_response.status_code == 200
+    submitted = submit_response.get_json()
+    assert submitted["attempt"]["status"] == "completed"
+    assert submitted["attempt"]["total_items"] == 4
+    assert submitted["attempt"]["correct_count"] == 1
+    assert len(submitted["review_items"]) == 4
+    assert submitted["review_items"][0]["transcript"]
+    assert "correct_index" in submitted["review_items"][0]
+    assert set(submitted["analysis"]["remediation_targets"]) == {"listening_function", "listening_cause"}
+
+    remediation_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/create-remediation",
+        headers=auth_headers,
+        json={"targets": submitted["analysis"]["remediation_targets"]},
+    )
+    assert remediation_response.status_code == 201
+    remediation = remediation_response.get_json()
+    assert remediation["created_count"] == 3
+    assert {card["learning_domain"] for card in remediation["cards"]} == {"language"}
+    assert all("listening" in card["tags"] for card in remediation["cards"])
+
+    duplicate_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/create-remediation",
+        headers=auth_headers,
+        json={"targets": submitted["analysis"]["remediation_targets"]},
+    )
+    assert duplicate_response.status_code == 201
+    assert duplicate_response.get_json()["created_count"] == 0
+    assert Card.query.filter_by(subject_id=subject_id).count() == 3
