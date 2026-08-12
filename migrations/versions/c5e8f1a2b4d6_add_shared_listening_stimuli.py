@@ -43,7 +43,9 @@ def upgrade():
 def downgrade():
     op.drop_index("ix_diagnostic_stimulus_playback_attempt_id", table_name="diagnostic_stimulus_playback")
     op.drop_table("diagnostic_stimulus_playback")
-    op.drop_column("diagnostic_response", "audio_duration_seconds")
-    op.drop_column("diagnostic_response", "script_version")
-    op.drop_column("diagnostic_response", "stimulus_id")
-    op.drop_column("diagnostic_attempt", "content_version")
+    with op.batch_alter_table("diagnostic_response") as batch_op:
+        batch_op.drop_column("audio_duration_seconds")
+        batch_op.drop_column("script_version")
+        batch_op.drop_column("stimulus_id")
+    with op.batch_alter_table("diagnostic_attempt") as batch_op:
+        batch_op.drop_column("content_version")

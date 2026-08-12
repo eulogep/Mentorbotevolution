@@ -177,20 +177,23 @@ const ToeicListeningConversationsTalks = ({ onRemediationCreated }) => {
     if (!audio) return;
     try {
       setError(null);
-      setAudioState('Lecture de l’extrait audio en cours.');
-      await audio.play();
+      setAudioState('Autorisation de l’écoute unique en cours.');
       const playbackResponse = await axios.post(
         `/api/diagnostic/attempts/${attempt.id}/stimuli/${currentStimulus.id}/playback`,
         {},
         authConfig,
       );
-      setPlayback(playbackResponse.data.playback);
+      const nextPlayback = playbackResponse.data.playback;
+      audio.src = nextPlayback.audio_url;
+      setPlayback(nextPlayback);
+      setAudioState('Lecture de l’extrait audio en cours.');
+      await audio.play();
       setIsPlaying(true);
     } catch (requestError) {
       audio.pause();
       audio.currentTime = 0;
       setIsPlaying(false);
-      setAudioState('La lecture n’a pas été validée par le serveur.');
+      setAudioState('La lecture n’a pas pu démarrer. L’écoute unique peut déjà être réservée.');
       setError(requestError.response?.data?.message || requestError.message || 'La lecture audio n’a pas pu être validée.');
     }
   };
@@ -302,8 +305,7 @@ const ToeicListeningConversationsTalks = ({ onRemediationCreated }) => {
           <CardHeader><CardTitle className="text-base">Réécoute guidée et transcription</CardTitle><CardDescription>Les scripts, les locuteurs et les corrections deviennent disponibles après la soumission, afin de soutenir l’auto-explication sans aider la première réponse.</CardDescription></CardHeader>
           <CardContent className="space-y-4">
             {(review?.review_stimuli || []).map((stimulus, index) => {
-              const audio = stimuli.find((item) => item.id === stimulus.stimulus_id);
-              return <div key={stimulus.stimulus_id} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="font-semibold text-slate-900">Extrait {index + 1}</p>{audio?.audio_url && <audio controls className="max-w-full" src={audio.audio_url}>Votre navigateur ne peut pas lire cet audio.</audio>}</div><div className="mt-3 space-y-2 text-sm leading-6 text-slate-800">{stimulus.speaker_transcript.map((line, lineIndex) => <p key={`${stimulus.stimulus_id}-${lineIndex}`}><span className="font-semibold">{line.speaker} :</span> {line.text}</p>)}</div><div className="mt-4 space-y-3">{stimulus.items.map((item) => <div key={item.item_id} className="rounded-lg border border-slate-200 bg-white p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-slate-900">Question</p><Badge variant={item.is_correct ? 'default' : 'outline'}>{item.is_correct ? 'Réponse correcte' : 'À revoir'}</Badge></div><p className="mt-2 text-sm text-slate-700"><span className="font-semibold">Correction :</span> {item.choices[item.correct_index]}</p><p className="mt-1 text-sm text-slate-600">{item.explanation}</p></div>)}</div></div>;
+              return <div key={stimulus.stimulus_id} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="font-semibold text-slate-900">Extrait {index + 1}</p>{stimulus.audio_url && <audio controls className="max-w-full" src={stimulus.audio_url}>Votre navigateur ne peut pas lire cet audio.</audio>}</div><div className="mt-3 space-y-2 text-sm leading-6 text-slate-800">{stimulus.speaker_transcript.map((line, lineIndex) => <p key={`${stimulus.stimulus_id}-${lineIndex}`}><span className="font-semibold">{line.speaker} :</span> {line.text}</p>)}</div><div className="mt-4 space-y-3">{stimulus.items.map((item) => <div key={item.item_id} className="rounded-lg border border-slate-200 bg-white p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-slate-900">Question</p><Badge variant={item.is_correct ? 'default' : 'outline'}>{item.is_correct ? 'Réponse correcte' : 'À revoir'}</Badge></div><p className="mt-2 text-sm text-slate-700"><span className="font-semibold">Correction :</span> {item.choices[item.correct_index]}</p><p className="mt-1 text-sm text-slate-600">{item.explanation}</p></div>)}</div></div>;
             })}
           </CardContent>
         </Card>
@@ -337,7 +339,7 @@ const ToeicListeningConversationsTalks = ({ onRemediationCreated }) => {
           <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600 transition-[width] duration-200" style={{ width: `${((stimulusIndex + 1) / stimuli.length) * 100}%` }} /></div>
         </CardHeader>
         <CardContent className="space-y-5">
-          <audio ref={audioRef} src={currentStimulus?.audio_url} preload="auto" aria-hidden="true" />
+          <audio ref={audioRef} preload="none" aria-hidden="true" />
           <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4"><p className="font-semibold text-indigo-950">Écoute unique par extrait</p><p className="mt-1 text-sm text-indigo-900">Écoutez l’extrait, puis choisissez A, B ou C pour chacune des deux questions. Les formulations et la transcription restent masquées jusqu’à la revue.</p><div className="mt-3 flex flex-wrap gap-2"><Button className="bg-indigo-700 hover:bg-indigo-800" onClick={playCurrentStimulus} disabled={Boolean(playback) || isPlaying} aria-describedby="shared-listening-audio-status"><Volume2 className="mr-2 h-4 w-4" />{playback ? 'Écoute utilisée' : 'Écouter l’extrait'}</Button>{isPlaying && <Button variant="outline" onClick={stopCurrentStimulus}><Square className="mr-2 h-4 w-4" />Arrêter l’écoute</Button>}</div><p id="shared-listening-audio-status" className="mt-3 text-sm text-indigo-900" aria-live="polite">{audioState}</p></div>
           <div className="space-y-4">{currentQuestions.map((item, questionIndex) => <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between gap-3"><p className="font-semibold text-slate-900">Question {questionIndex + 1}</p><Badge variant="outline">{targetLabels[item.target] || item.target}</Badge></div><p className="mt-2 text-sm text-slate-600">Choisissez la réponse la plus adaptée après votre écoute.</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{(item.choice_labels || []).map((label, index) => <button type="button" key={label} onClick={() => selectAnswer(item.id, index)} disabled={!playback} className={`rounded-xl border p-4 text-left text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 ${answers[item.id]?.selected_index === index ? 'border-indigo-600 bg-indigo-50 text-indigo-950 ring-1 ring-indigo-600' : 'border-slate-200 bg-white text-slate-800 hover:border-indigo-300 hover:bg-slate-50'}`}><span className="text-indigo-700">Réponse {label}</span></button>)}</div><div className="mt-4"><p className="mb-2 text-sm font-semibold text-slate-800">Confiance <span className="font-normal text-slate-500">(facultatif)</span></p><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{confidenceLabels.map((option) => <button type="button" key={option.value} onClick={() => selectConfidence(item.id, option.value)} disabled={!playback} className={`rounded-lg border px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 ${answers[item.id]?.confidence === option.value ? 'border-indigo-600 bg-indigo-50 text-indigo-950' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>{option.label}</button>)}</div></div></div>)}</div>
           <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-slate-500">La lecture et le temps sont des données de contrôle descriptives, pas des indicateurs de niveau.</p><Button onClick={advanceStimulus} disabled={!playback || !currentAnswersComplete || submitting} className="bg-indigo-700 hover:bg-indigo-800">{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyse…</> : <>{stimulusIndex === stimuli.length - 1 ? 'Voir mes résultats' : 'Extrait suivant'}<ArrowRight className="ml-2 h-4 w-4" /></>}</Button></div>

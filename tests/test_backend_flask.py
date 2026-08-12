@@ -639,6 +639,8 @@ def test_shared_listening_stimuli_require_server_playback_and_delay_review(clien
     for stimulus in catalog["stimuli"]:
         assert stimulus["audio_status"] == "available"
         assert stimulus["audio_duration_seconds"] > 0
+        assert "audio_url" not in stimulus
+        assert "asset_filename" not in stimulus
         assert "speaker_transcript" not in stimulus
     for item in catalog["items"]:
         assert "choices" not in item
@@ -657,7 +659,36 @@ def test_shared_listening_stimuli_require_server_playback_and_delay_review(clien
     attempt_id = started["attempt"]["id"]
     assert started["attempt"]["content_version"] == "1.0.0"
     assert all("speaker_transcript" not in stimulus for stimulus in started["stimuli"])
+    assert all("asset_filename" not in stimulus for stimulus in started["stimuli"])
+    assert all(stimulus["audio_url"].startswith(f"/api/diagnostic/attempts/{attempt_id}/stimuli/") for stimulus in started["stimuli"])
     assert all("choices" not in item for item in started["items"])
+
+    blocked_audio = client.get(started["stimuli"][0]["audio_url"], headers=auth_headers)
+    assert blocked_audio.status_code == 409
+
+    other_suffix = uuid.uuid4().hex[:8]
+    other_payload = {
+        "username": f"other_{other_suffix}",
+        "email": f"other_{other_suffix}@example.com",
+        "password": "password123",
+    }
+    assert client.post("/api/user/register", json=other_payload).status_code == 201
+    other_login = client.post(
+        "/api/user/login",
+        json={"email": other_payload["email"], "password": other_payload["password"]},
+    )
+    assert other_login.status_code == 200
+    other_headers = {"Authorization": f"Bearer {other_login.get_json()['access_token']}"}
+    assert client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/stimuli/conversation-01/playback",
+        headers=other_headers,
+        json={},
+    ).status_code == 404
+    assert client.get(
+        f"/api/diagnostic/attempts/{attempt_id}/listening-review",
+        headers=other_headers,
+    ).status_code == 404
+    assert client.get(started["stimuli"][0]["audio_url"], headers=other_headers).status_code == 404
 
     premature_review = client.get(
         f"/api/diagnostic/attempts/{attempt_id}/listening-review",
@@ -703,7 +734,13 @@ def test_shared_listening_stimuli_require_server_playback_and_delay_review(clien
         )
         assert playback_response.status_code == 201
         assert playback_response.headers["Cache-Control"] == "no-store"
-        assert playback_response.get_json()["playback"]["play_count"] == 1
+        playback_payload = playback_response.get_json()["playback"]
+        assert playback_payload["play_count"] == 1
+        audio_response = client.get(playback_payload["audio_url"], headers=auth_headers)
+        assert audio_response.status_code == 200
+        assert audio_response.headers["Cache-Control"] == "no-store"
+        assert audio_response.mimetype == "audio/wav"
+        assert audio_response.data.startswith(b"RIFF")
 
     duplicate_playback = client.post(
         f"/api/diagnostic/attempts/{attempt_id}/stimuli/conversation-01/playback",
@@ -747,6 +784,8 @@ def test_shared_listening_stimuli_require_server_playback_and_delay_review(clien
     assert len(review["review_stimuli"]) == 4
     assert all(len(stimulus["items"]) == 2 for stimulus in review["review_stimuli"])
     assert all(stimulus["speaker_transcript"] for stimulus in review["review_stimuli"])
+    assert all(stimulus["audio_url"].startswith(f"/api/diagnostic/attempts/{attempt_id}/stimuli/") for stimulus in review["review_stimuli"])
+    assert client.get(review["review_stimuli"][0]["audio_url"], headers=other_headers).status_code == 404
 
     remediation_response = client.post(
         f"/api/diagnostic/attempts/{attempt_id}/create-remediation",

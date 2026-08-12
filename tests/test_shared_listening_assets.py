@@ -10,7 +10,8 @@ from src.content.toeic_listening_conversations_talks import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = PROJECT_ROOT / "src" / "content" / "listening_conversations_talks_assets.json"
-STATIC_AUDIO_DIR = PROJECT_ROOT / "public" / "listening"
+PRIVATE_AUDIO_DIR = PROJECT_ROOT / "src" / "content" / "listening_audio"
+PUBLIC_AUDIO_DIR = PROJECT_ROOT / "public" / "listening"
 
 
 def test_shared_listening_manifest_matches_original_audio_assets():
@@ -22,16 +23,17 @@ def test_shared_listening_manifest_matches_original_audio_assets():
     assert len(manifest["items"]) == 4
     assert len(diagnostic["stimuli"]) == 4
     assert len(diagnostic["items"]) == 8
+    assert {item["correct_index"] for item in diagnostic["items"]} == {0, 1, 2}
 
     assets_by_stimulus = {asset["stimulus_id"]: asset for asset in manifest["items"]}
     assert set(assets_by_stimulus) == {stimulus["id"] for stimulus in diagnostic["stimuli"]}
 
     for stimulus in diagnostic["stimuli"]:
         asset = assets_by_stimulus[stimulus["id"]]
-        audio_path = STATIC_AUDIO_DIR / Path(asset["path"]).name
+        audio_path = PROJECT_ROOT / asset["path"]
         assert stimulus["audio_status"] == "available"
         assert stimulus["audio_id"] == asset["audio_id"]
-        assert stimulus["audio_url"] == asset["path"]
+        assert stimulus["asset_filename"] == Path(asset["path"]).name
         assert stimulus["script_version"] == asset["script_version"]
         assert stimulus["audio_duration_seconds"] == asset["duration_seconds"]
         assert asset["status"] == "available"
@@ -45,6 +47,8 @@ def test_shared_listening_manifest_matches_original_audio_assets():
             assert audio_file.getsampwidth() * 8 == asset["sample_width_bits"] == 16
         assert abs(measured_duration - asset["duration_seconds"]) < 0.01
 
-    assert not list(STATIC_AUDIO_DIR.glob("*transcription*"))
-    assert not list(STATIC_AUDIO_DIR.glob("*.vtt"))
-    assert not list(STATIC_AUDIO_DIR.glob("*.srt"))
+    assert PRIVATE_AUDIO_DIR.is_dir()
+    assert not list(PUBLIC_AUDIO_DIR.glob("lct-*.wav"))
+    assert not list(PRIVATE_AUDIO_DIR.glob("*transcription*"))
+    assert not list(PRIVATE_AUDIO_DIR.glob("*.vtt"))
+    assert not list(PRIVATE_AUDIO_DIR.glob("*.srt"))

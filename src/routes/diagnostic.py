@@ -3,11 +3,13 @@
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file, url_for
+from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from src.content.toeic_listening_conversations_talks import (
     TOEIC_LISTENING_CONVERSATIONS_TALKS_ID,
+    get_toeic_listening_conversations_talks_audio_path,
     get_toeic_listening_conversations_talks_diagnostic as load_toeic_listening_conversations_talks,
     get_toeic_listening_conversations_talks_item,
     get_toeic_listening_conversations_talks_stimulus,
@@ -116,25 +118,42 @@ def _public_shared_listening_item(item):
     return {key: item[key] for key in permitted if key in item}
 
 
-def _public_shared_listening_stimulus(stimulus):
+def _public_shared_listening_stimulus(stimulus, attempt_id=None):
     """Whitelist media metadata while keeping every transcript and speaker label private."""
     permitted = {
         "id",
         "task_type",
         "scenario",
         "audio_id",
-        "audio_url",
         "audio_status",
         "script_version",
         "audio_duration_seconds",
         "max_plays",
     }
-    return {key: stimulus[key] for key in permitted if key in stimulus}
+    public_stimulus = {key: stimulus[key] for key in permitted if key in stimulus}
+    if attempt_id is not None:
+        public_stimulus["audio_url"] = url_for(
+            "diagnostic.get_shared_listening_audio",
+            attempt_id=attempt_id,
+            stimulus_id=stimulus["id"],
+        )
+    return public_stimulus
 
 
 def _public_diagnostic_metadata(diagnostic):
-    """Return only diagnostic-level metadata that contains no private editorial content."""
-    return {key: value for key, value in diagnostic.items() if key not in {"items", "stimuli"}}
+    """Whitelist diagnostic-level metadata that contains no private editorial content."""
+    permitted = {
+        "id",
+        "content_version",
+        "title",
+        "description",
+        "learning_domain",
+        "source",
+        "disclaimer",
+        "max_plays_per_item",
+        "max_plays_per_stimulus",
+    }
+    return {key: diagnostic[key] for key in permitted if key in diagnostic}
 
 
 def _listening_review_items(responses, item_loader):
@@ -256,7 +275,10 @@ def _start_attempt(diagnostic_id, loader, public_item_loader, public_stimulus_lo
         "items": [public_item_loader(item) for item in diagnostic["items"]],
     }
     if public_stimulus_loader:
-        payload["stimuli"] = [public_stimulus_loader(stimulus) for stimulus in diagnostic["stimuli"]]
+        payload["stimuli"] = [
+            public_stimulus_loader(stimulus, attempt.id)
+            for stimulus in diagnostic["stimuli"]
+        ]
     return payload
 
 
@@ -394,13 +416,43 @@ def register_listening_stimulus_playback(attempt_id, stimulus_id):
         )
         db.session.add(playback)
         db.session.commit()
-        return _no_store({"status": "success", "playback": playback.to_dict()}, 201)
+        public_playback = playback.to_dict()
+        public_playback["audio_url"] = url_for(
+            "diagnostic.get_shared_listening_audio",
+            attempt_id=attempt.id,
+            stimulus_id=stimulus_id,
+        )
+        return _no_store({"status": "success", "playback": public_playback}, 201)
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": "The listening play limit was already used"}), 409
     except ValueError as exc:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(exc)}), 400
     except Exception:
         db.session.rollback()
         return jsonify({"status": "error", "message": "Unable to register Listening playback."}), 500
+
+
+@diagnostic_bp.route("/attempts/<int:attempt_id>/stimuli/<string:stimulus_id>/audio", methods=["GET"])
+@jwt_required()
+def get_shared_listening_audio(attempt_id, stimulus_id):
+    """Serve one private WAV only to its attempt owner after server-authorized playback."""
+    attempt = _owned_attempt_or_404(attempt_id)
+    if not attempt or attempt.diagnostic_id != TOEIC_LISTENING_CONVERSATIONS_TALKS_ID:
+        return jsonify({"status": "error", "message": "Diagnostic attempt not found"}), 404
+    playback = DiagnosticStimulusPlayback.query.filter_by(
+        attempt_id=attempt.id,
+        stimulus_id=stimulus_id,
+    ).first()
+    if not playback:
+        return jsonify({"status": "error", "message": "Authorize the single listening playback before requesting audio"}), 409
+    audio_path = get_toeic_listening_conversations_talks_audio_path(stimulus_id)
+    if not audio_path:
+        return jsonify({"status": "error", "message": "This audio stimulus is not available"}), 404
+    response = send_file(audio_path, mimetype="audio/wav", conditional=False, max_age=0)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @diagnostic_bp.route("/attempts/<int:attempt_id>/submit", methods=["POST"])
@@ -556,6 +608,11 @@ def get_shared_listening_review(attempt_id):
     for stimulus in diagnostic["stimuli"]:
         review_stimuli.append({
             "stimulus_id": stimulus["id"],
+            "audio_url": url_for(
+                "diagnostic.get_shared_listening_audio",
+                attempt_id=attempt.id,
+                stimulus_id=stimulus["id"],
+            ),
             "speaker_transcript": stimulus["speaker_transcript"],
             "items": items_by_stimulus[stimulus["id"]],
         })

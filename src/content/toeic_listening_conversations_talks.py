@@ -6,12 +6,14 @@ No ETS audio, script, item, visual, answer key, or score conversion is used.
 """
 
 from copy import deepcopy
+from functools import lru_cache
 import json
 from pathlib import Path
 
 
 TOEIC_LISTENING_CONVERSATIONS_TALKS_ID = "toeic-listening-conversations-talks-v1"
 ASSET_MANIFEST_PATH = Path(__file__).with_name("listening_conversations_talks_assets.json")
+PRIVATE_AUDIO_DIR = Path(__file__).with_name("listening_audio")
 
 TOEIC_LISTENING_CONVERSATIONS_TALKS = {
     "id": TOEIC_LISTENING_CONVERSATIONS_TALKS_ID,
@@ -34,7 +36,7 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "task_type": "listening_conversation",
             "scenario": "delivery-installation",
             "audio_id": "lct-01",
-            "audio_url": "/listening/lct-01.wav",
+            "asset_filename": "lct-01.wav",
             "audio_status": "available",
             "script_version": "1.0.0",
             "audio_duration_seconds": None,
@@ -59,7 +61,7 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "task_type": "listening_conversation",
             "scenario": "client-briefing",
             "audio_id": "lct-02",
-            "audio_url": "/listening/lct-02.wav",
+            "asset_filename": "lct-02.wav",
             "audio_status": "available",
             "script_version": "1.0.0",
             "audio_duration_seconds": None,
@@ -84,7 +86,7 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "task_type": "listening_talk",
             "scenario": "building-safety-notice",
             "audio_id": "lct-03",
-            "audio_url": "/listening/lct-03.wav",
+            "asset_filename": "lct-03.wav",
             "audio_status": "available",
             "script_version": "1.0.0",
             "audio_duration_seconds": None,
@@ -105,7 +107,7 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "task_type": "listening_talk",
             "scenario": "returns-process-update",
             "audio_id": "lct-04",
-            "audio_url": "/listening/lct-04.wav",
+            "asset_filename": "lct-04.wav",
             "audio_status": "available",
             "script_version": "1.0.0",
             "audio_duration_seconds": None,
@@ -131,12 +133,12 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "target": "listening_detail",
             "scenario": "delivery-installation",
             "choices": [
-                "The installation team.",
                 "The Northgate office reception desk.",
+                "The installation team.",
                 "The finance department.",
             ],
             "choice_labels": ["A", "B", "C"],
-            "correct_index": 0,
+            "correct_index": 1,
             "explanation": "Daniel asks whether he should update the installation team, and Marissa confirms this.",
             "remediation": None,
         },
@@ -147,12 +149,12 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "target": "listening_inference",
             "scenario": "delivery-installation",
             "choices": [
-                "The team needs the revised time before a briefing.",
                 "The delivery has been cancelled.",
                 "The office is closed on Wednesday.",
+                "The team needs the revised time before a briefing.",
             ],
             "choice_labels": ["A", "B", "C"],
-            "correct_index": 0,
+            "correct_index": 2,
             "explanation": "Marissa says the installation team needs the new time before today's briefing.",
             "remediation": None,
         },
@@ -163,12 +165,12 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "target": "listening_detail",
             "scenario": "client-briefing",
             "choices": [
-                "Reserve a meeting room.",
                 "Move a delivery appointment.",
+                "Reserve a meeting room.",
                 "Prepare a budget report.",
             ],
             "choice_labels": ["A", "B", "C"],
-            "correct_index": 0,
+            "correct_index": 1,
             "explanation": "Priya says she will book the small meeting room under Evan's name.",
             "remediation": {
                 "front": "Comment dire que l’on réserve une salle pour quelqu’un ?",
@@ -200,12 +202,12 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "target": "listening_detail",
             "scenario": "building-safety-notice",
             "choices": [
-                "Exit B on the east side of the lobby.",
                 "Exit C near the parking area.",
                 "The staff entrance on the ground floor.",
+                "Exit B on the east side of the lobby.",
             ],
             "choice_labels": ["A", "B", "C"],
-            "correct_index": 0,
+            "correct_index": 2,
             "explanation": "The announcement directs staff to use Exit B on the east side of the lobby.",
             "remediation": None,
         },
@@ -216,12 +218,12 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "target": "listening_main_idea",
             "scenario": "building-safety-notice",
             "choices": [
-                "A change to building access and safety arrangements.",
                 "A new staff recruitment process.",
+                "A change to building access and safety arrangements.",
                 "A request to order office equipment.",
             ],
             "choice_labels": ["A", "B", "C"],
-            "correct_index": 0,
+            "correct_index": 1,
             "explanation": "The message announces a temporary exit closure and a rescheduled fire drill.",
             "remediation": None,
         },
@@ -232,12 +234,12 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
             "target": "listening_detail",
             "scenario": "returns-process-update",
             "choices": [
-                "The updated return form.",
                 "A revised delivery schedule.",
                 "A customer feedback survey.",
+                "The updated return form.",
             ],
             "choice_labels": ["A", "B", "C"],
-            "correct_index": 0,
+            "correct_index": 2,
             "explanation": "The announcement says the updated return form will be available from Monday.",
             "remediation": {
                 "front": "Comment annoncer qu’une ressource sera disponible à une date donnée ?",
@@ -266,10 +268,21 @@ TOEIC_LISTENING_CONVERSATIONS_TALKS = {
 }
 
 
+@lru_cache(maxsize=1)
+def _load_asset_manifest() -> dict:
+    """Parse the versioned private asset manifest once per application process."""
+    return json.loads(ASSET_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _assets_by_stimulus() -> dict:
+    """Index the immutable manifest by shared stimulus identifier."""
+    return {asset["stimulus_id"]: asset for asset in _load_asset_manifest()["items"]}
+
+
 def _attach_asset_metadata(diagnostic: dict) -> dict:
     """Attach provenance-backed availability and durations to a private copy."""
-    manifest = json.loads(ASSET_MANIFEST_PATH.read_text(encoding="utf-8"))
-    assets_by_stimulus = {asset["stimulus_id"]: asset for asset in manifest["items"]}
+    assets_by_stimulus = _assets_by_stimulus()
     for stimulus in diagnostic["stimuli"]:
         asset = assets_by_stimulus.get(stimulus["id"])
         if not asset:
@@ -287,16 +300,27 @@ def get_toeic_listening_conversations_talks_diagnostic() -> dict:
 
 
 def get_toeic_listening_conversations_talks_item(item_id: str) -> dict | None:
-    """Return one private Listening item without sharing mutable content."""
-    for item in get_toeic_listening_conversations_talks_diagnostic()["items"]:
+    """Return one private Listening item without copying the full package."""
+    for item in TOEIC_LISTENING_CONVERSATIONS_TALKS["items"]:
         if item["id"] == item_id:
-            return item
+            return deepcopy(item)
     return None
 
 
 def get_toeic_listening_conversations_talks_stimulus(stimulus_id: str) -> dict | None:
-    """Return one private Listening stimulus without sharing mutable content."""
-    for stimulus in get_toeic_listening_conversations_talks_diagnostic()["stimuli"]:
+    """Return one private Listening stimulus with its verified asset metadata."""
+    for stimulus in TOEIC_LISTENING_CONVERSATIONS_TALKS["stimuli"]:
         if stimulus["id"] == stimulus_id:
-            return stimulus
+            return _attach_asset_metadata({"stimuli": [deepcopy(stimulus)]})["stimuli"][0]
     return None
+
+
+def get_toeic_listening_conversations_talks_audio_path(stimulus_id: str) -> Path | None:
+    """Resolve a verified private WAV path without accepting a client-provided filename."""
+    stimulus = get_toeic_listening_conversations_talks_stimulus(stimulus_id)
+    if not stimulus or stimulus.get("audio_status") != "available":
+        return None
+    path = (PRIVATE_AUDIO_DIR / stimulus["asset_filename"]).resolve()
+    if path.parent != PRIVATE_AUDIO_DIR.resolve() or not path.is_file():
+        return None
+    return path
