@@ -302,6 +302,8 @@ class DiagnosticResponse(db.Model):
     task_type = db.Column(db.String(50), nullable=False)
     target = db.Column(db.String(50), nullable=False, index=True)
     scenario = db.Column(db.String(100), nullable=False)
+    audio_id = db.Column(db.String(100), nullable=True)
+    play_count = db.Column(db.Integer, nullable=True)
     selected_index = db.Column(db.Integer, nullable=True)
     is_correct = db.Column(db.Boolean, nullable=False)
     response_time_seconds = db.Column(db.Float, nullable=True)
@@ -315,6 +317,8 @@ class DiagnosticResponse(db.Model):
             "task_type": self.task_type,
             "target": self.target,
             "scenario": self.scenario,
+            "audio_id": self.audio_id,
+            "play_count": self.play_count,
             "selected_index": self.selected_index,
             "is_correct": self.is_correct,
             "response_time_seconds": self.response_time_seconds,

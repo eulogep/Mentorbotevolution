@@ -1,0 +1,63 @@
+{
+  "manifest_version": "1.0.0",
+  "module": "toeic-listening-question-response-v1",
+  "origin": "editorial_original",
+  "items": [
+    {
+      "audio_id": "lqr-01",
+      "script_id": "lqr-01",
+      "script_version": "1.0.0",
+      "path": "/listening/lqr-01.wav",
+      "sha256": "8d670507c14576f3d5d30f98141a8520c7676411d4fbec9655447ecf9073739b",
+      "duration_seconds": 20.56,
+      "format": "wav",
+      "voice_source": "synthetic_generic_voice_charon",
+      "license_reference": "project-generated synthetic asset; no identifiable-person imitation or cloned voice",
+      "generated_at": "2026-08-12T00:12:00Z",
+      "status": "available",
+      "review_status": "audio_integrity_verified"
+    },
+    {
+      "audio_id": "lqr-02",
+      "script_id": "lqr-02",
+      "script_version": "1.0.0",
+      "path": "/listening/lqr-02.wav",
+      "sha256": "534e6c020a91cb60bdefcf37d7932af692fdf55eb124df040e59ef83ca914593",
+      "duration_seconds": 11.812517,
+      "format": "wav",
+      "voice_source": "synthetic_generic_voice_espeak_ng_en_us",
+      "license_reference": "eSpeak NG 1.51+dfsg Ubuntu package; internally generated synthetic speech; no identifiable-person imitation or cloned voice",
+      "generated_at": "2026-08-12T00:28:00Z",
+      "status": "available",
+      "review_status": "audio_integrity_verified"
+    },
+    {
+      "audio_id": "lqr-03",
+      "script_id": "lqr-03",
+      "script_version": "1.0.0",
+      "path": "/listening/lqr-03.wav",
+      "sha256": "9cd177fe87b66239f771244f6b7859daa52e5f4cd3d054d3e8b89dc7bac28a4e",
+      "duration_seconds": 12.098866,
+      "format": "wav",
+      "voice_source": "synthetic_generic_voice_espeak_ng_en_us",
+      "license_reference": "eSpeak NG 1.51+dfsg Ubuntu package; internally generated synthetic speech; no identifiable-person imitation or cloned voice",
+      "generated_at": "2026-08-12T00:28:00Z",
+      "status": "available",
+      "review_status": "audio_integrity_verified"
+    },
+    {
+      "audio_id": "lqr-04",
+      "script_id": "lqr-04",
+      "script_version": "1.0.0",
+      "path": "/listening/lqr-04.wav",
+      "sha256": "a5b86f8f4ac051782660ffd692c9d4b36dd8535cd4957215f3dda18120a93256",
+      "duration_seconds": 12.241315,
+      "format": "wav",
+      "voice_source": "synthetic_generic_voice_espeak_ng_en_us",
+      "license_reference": "eSpeak NG 1.51+dfsg Ubuntu package; internally generated synthetic speech; no identifiable-person imitation or cloned voice",
+      "generated_at": "2026-08-12T00:28:00Z",
+      "status": "available",
+      "review_status": "audio_integrity_verified"
+    }
+  ]
+}
