@@ -1,0 +1,72 @@
+{
+  "module": "toeic-listening-multi-speaker-v1",
+  "content_version": "1.0.0",
+  "origin": "editorial_original",
+  "access": "private_authenticated_after_server_authorized_playback",
+  "items": [
+    {
+      "audio_id": "lms-01",
+      "stimulus_id": "conversation-01",
+      "script_id": "conversation-01",
+      "script_version": "1.0.0",
+      "path": "src/content/listening_audio/lms-01.wav",
+      "sha256": "5a6a098e1befb91133862e3e3bee60e3dd010a9790a46474bd3f3ad799196a71",
+      "duration_seconds": 24.92,
+      "format": "wav",
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bits": 16,
+      "status": "available",
+      "source": "synthetic_generic_voices_kore_charon",
+      "voice_consent": "not_applicable_generic_synthetic_voice"
+    },
+    {
+      "audio_id": "lms-02",
+      "stimulus_id": "conversation-02",
+      "script_id": "conversation-02",
+      "script_version": "1.0.0",
+      "path": "src/content/listening_audio/lms-02.wav",
+      "sha256": "23227fc344e5aaff3c9c784a1f447c3704e031cd5d725d90b71bd74c5c6cbeef",
+      "duration_seconds": 27.52,
+      "format": "wav",
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bits": 16,
+      "status": "available",
+      "source": "synthetic_generic_voices_iapetus_aoede",
+      "voice_consent": "not_applicable_generic_synthetic_voice"
+    },
+    {
+      "audio_id": "lms-03",
+      "stimulus_id": "talk-01",
+      "script_id": "talk-01",
+      "script_version": "1.0.0",
+      "path": "src/content/listening_audio/lms-03.wav",
+      "sha256": "aac558a02fed4a6e48388e06119197c775394aedae0acbfcc16af651c78b41aa",
+      "duration_seconds": 24.32,
+      "format": "wav",
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bits": 16,
+      "status": "available",
+      "source": "synthetic_generic_voice_rasalgethi",
+      "voice_consent": "not_applicable_generic_synthetic_voice"
+    },
+    {
+      "audio_id": "lms-04",
+      "stimulus_id": "talk-02",
+      "script_id": "talk-02",
+      "script_version": "1.0.0",
+      "path": "src/content/listening_audio/lms-04.wav",
+      "sha256": "bda67d3309a0daf42a478d512d5ff12cd2fa34d1513d49d9a454bb4019bdb8f3",
+      "duration_seconds": 24.92,
+      "format": "wav",
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bits": 16,
+      "status": "available",
+      "source": "synthetic_generic_voice_sadaltager",
+      "voice_consent": "not_applicable_generic_synthetic_voice"
+    }
+  ]
+}
