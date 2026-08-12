@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from main import app, get_database_uri, should_auto_create_tables  # noqa: E402
 from src.content.toeic_listening_question_response import get_toeic_listening_question_response_item  # noqa: E402
 from src.content.toeic_reading_diagnostic import get_diagnostic_item  # noqa: E402
-from src.models.user import Card, Concept, StudySession, Subject, db  # noqa: E402
+from src.models.user import Card, Concept, DiagnosticResponse, StudySession, Subject, db  # noqa: E402
 from src.utils import document_extraction  # noqa: E402
 
 
@@ -535,6 +535,18 @@ def test_toeic_listening_question_response_hides_scripts_requires_play_and_creat
     assert missing_play_response.status_code == 400
     assert "Listen to each audio item" in missing_play_response.get_json()["message"]
 
+    too_many_play_responses = [
+        {**response, "play_count": 2}
+        for response in missing_play_responses
+    ]
+    too_many_play_response = client.post(
+        f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/submit",
+        headers=auth_headers,
+        json={"responses": too_many_play_responses, "duration_seconds": 60},
+    )
+    assert too_many_play_response.status_code == 400
+    assert "play limit" in too_many_play_response.get_json()["message"]
+
     responses = []
     for public_item in start_payload["items"]:
         item = get_toeic_listening_question_response_item(public_item["id"])
@@ -562,12 +574,15 @@ def test_toeic_listening_question_response_hides_scripts_requires_play_and_creat
     assert len(submitted["review_items"]) == 4
     assert submitted["review_items"][0]["transcript"]
     assert "correct_index" in submitted["review_items"][0]
-    assert set(submitted["analysis"]["remediation_targets"]) == {"listening_function", "listening_cause"}
+    assert set(submitted["analysis"]["available_remediation_targets"]) == {"listening_function", "listening_cause"}
+    saved_responses = DiagnosticResponse.query.filter_by(attempt_id=start_payload["attempt"]["id"]).all()
+    assert {response.audio_id for response in saved_responses} == {"lqr-01", "lqr-02", "lqr-03", "lqr-04"}
+    assert {response.play_count for response in saved_responses} == {1}
 
     remediation_response = client.post(
         f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/create-remediation",
         headers=auth_headers,
-        json={"targets": submitted["analysis"]["remediation_targets"]},
+        json={"targets": submitted["analysis"]["available_remediation_targets"]},
     )
     assert remediation_response.status_code == 201
     remediation = remediation_response.get_json()
@@ -578,7 +593,7 @@ def test_toeic_listening_question_response_hides_scripts_requires_play_and_creat
     duplicate_response = client.post(
         f"/api/diagnostic/attempts/{start_payload['attempt']['id']}/create-remediation",
         headers=auth_headers,
-        json={"targets": submitted["analysis"]["remediation_targets"]},
+        json={"targets": submitted["analysis"]["available_remediation_targets"]},
     )
     assert duplicate_response.status_code == 201
     assert duplicate_response.get_json()["created_count"] == 0

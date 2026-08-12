@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { ArrowRight, CheckCircle2, Headphones, Loader2, RotateCcw, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Headphones, Loader2, RotateCcw, Sparkles, Square, Volume2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -35,6 +35,7 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [confidence, setConfidence] = useState(null);
   const [playCount, setPlayCount] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [audioState, setAudioState] = useState('Prêt à écouter.');
   const [itemStartedAt, setItemStartedAt] = useState(null);
   const [diagnosticStartedAt, setDiagnosticStartedAt] = useState(null);
@@ -52,9 +53,17 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
     [metadata],
   );
   const listeningReady = Boolean(metadata?.items?.length) && unavailableAssets.length === 0;
-  const remediationTargets = useMemo(() => results?.analysis?.remediation_targets || [], [results]);
+  const remediationTargets = useMemo(() => results?.analysis?.available_remediation_targets || [], [results]);
 
   useEffect(() => {
+    let ignore = false;
+    if (!token) {
+      setSubjects([]);
+      setMetadata(null);
+      setLoading(false);
+      return () => { ignore = true; };
+    }
+
     const loadInitialData = async () => {
       try {
         setLoading(true);
@@ -62,25 +71,31 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
           axios.get('/api/mastery/get-subjects', authConfig),
           axios.get('/api/diagnostic/toeic-listening-question-response', authConfig),
         ]);
+        if (ignore) return;
         const nextSubjects = subjectResponse.data?.status === 'success' ? subjectResponse.data.subjects || [] : [];
         const nextLanguageSubjects = nextSubjects.filter((subject) => subject.domain === 'language');
         setSubjects(nextSubjects);
         setSubjectId((current) => current || (nextLanguageSubjects[0] ? String(nextLanguageSubjects[0].id) : ''));
         setMetadata(listeningResponse.data || null);
       } catch (requestError) {
-        setError(requestError.response?.data?.message || requestError.message || 'Impossible de préparer le module Listening.');
+        if (!ignore) setError(requestError.response?.data?.message || requestError.message || 'Impossible de préparer le module Listening.');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
-    if (token) loadInitialData();
+    loadInitialData();
+    return () => { ignore = true; };
   }, [authConfig, token]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return undefined;
-    const handleEnded = () => setAudioState('Écoute terminée. Vous pouvez maintenant choisir votre réponse.');
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setAudioState('Écoute terminée. Vous pouvez maintenant choisir votre réponse.');
+    };
     const handleError = () => {
+      setIsPlaying(false);
       setAudioState('Le fichier audio est indisponible. Cet exercice ne peut pas être poursuivi.');
       setError('Le fichier audio attendu est indisponible. Rechargez la page ou revenez lorsque la publication des actifs est terminée.');
     };
@@ -105,6 +120,7 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
     setSelectedIndex(null);
     setConfidence(null);
     setPlayCount(0);
+    setIsPlaying(false);
     setAudioState('Prêt à écouter.');
     setItemStartedAt(null);
     setDiagnosticStartedAt(null);
@@ -138,6 +154,7 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
       setSelectedIndex(null);
       setConfidence(null);
       setPlayCount(0);
+      setIsPlaying(false);
       setAudioState('Prêt à écouter. L’extrait pourra être lu une seule fois.');
       const now = Date.now();
       setItemStartedAt(now);
@@ -150,18 +167,30 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
   };
 
   const playCurrentAudio = async () => {
-    if (!currentItem || playCount >= currentItem.max_plays) return;
+    const maxPlays = currentItem?.max_plays || 1;
+    if (!currentItem || playCount >= maxPlays) return;
     const audio = audioRef.current;
     if (!audio) return;
     try {
       setError(null);
       setAudioState('Lecture de l’extrait audio en cours.');
       await audio.play();
-      setPlayCount(1);
+      setPlayCount((current) => current + 1);
+      setIsPlaying(true);
     } catch (playError) {
+      setIsPlaying(false);
       setAudioState('La lecture audio n’a pas pu démarrer.');
       setError(playError.message || 'La lecture audio n’a pas pu démarrer.');
     }
+  };
+
+  const stopCurrentAudio = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+    setIsPlaying(false);
+    setAudioState('Lecture arrêtée. Votre écoute unique est considérée comme utilisée.');
   };
 
   const continueToNextItem = async () => {
@@ -185,6 +214,7 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
       setSelectedIndex(null);
       setConfidence(null);
       setPlayCount(0);
+      setIsPlaying(false);
       setAudioState('Prêt à écouter. L’extrait pourra être lu une seule fois.');
       setItemStartedAt(Date.now());
       return;
@@ -287,7 +317,7 @@ const ToeicListeningQuestionResponse = ({ onRemediationCreated }) => {
         </CardHeader>
         <CardContent className="space-y-5">
           <audio ref={audioRef} src={currentItem?.audio_url} preload="auto" aria-hidden="true" />
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4"><p className="font-semibold text-indigo-950">Écoute unique</p><p className="mt-1 text-sm text-indigo-900">Écoutez l’extrait, puis choisissez la réponse A, B ou C. Les choix textuels et la transcription restent masqués jusqu’à la correction.</p><Button className="mt-3 bg-indigo-700 hover:bg-indigo-800" onClick={playCurrentAudio} disabled={playCount >= (currentItem?.max_plays || 1)} aria-describedby="listening-audio-status"><Volume2 className="mr-2 h-4 w-4" />{playCount ? 'Écoute utilisée' : 'Écouter l’extrait'}</Button><p id="listening-audio-status" className="mt-3 text-sm text-indigo-900" aria-live="polite">{audioState}</p></div>
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4"><p className="font-semibold text-indigo-950">Écoute unique</p><p className="mt-1 text-sm text-indigo-900">Écoutez l’extrait, puis choisissez la réponse A, B ou C. Les choix textuels et la transcription restent masqués jusqu’à la correction.</p><div className="mt-3 flex flex-wrap gap-2"><Button className="bg-indigo-700 hover:bg-indigo-800" onClick={playCurrentAudio} disabled={playCount >= (currentItem?.max_plays || 1)} aria-describedby="listening-audio-status"><Volume2 className="mr-2 h-4 w-4" />{playCount ? 'Écoute utilisée' : 'Écouter l’extrait'}</Button>{isPlaying && <Button variant="outline" onClick={stopCurrentAudio}><Square className="mr-2 h-4 w-4" />Arrêter l’écoute</Button>}</div><p id="listening-audio-status" className="mt-3 text-sm text-indigo-900" aria-live="polite">{audioState}</p></div>
           <div className="grid gap-2 sm:grid-cols-3">{(currentItem?.choice_labels || []).map((label, index) => <button type="button" key={label} onClick={() => setSelectedIndex(index)} disabled={playCount < 1} className={`rounded-xl border p-4 text-left text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 ${selectedIndex === index ? 'border-indigo-600 bg-indigo-50 text-indigo-950 ring-1 ring-indigo-600' : 'border-slate-200 bg-white text-slate-800 hover:border-indigo-300 hover:bg-slate-50'}`}><span className="text-indigo-700">Réponse {label}</span></button>)}</div>
           <div><p className="mb-2 text-sm font-semibold text-slate-800">Confiance dans votre réponse <span className="font-normal text-slate-500">(facultatif)</span></p><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{confidenceLabels.map((item) => <button type="button" key={item.value} onClick={() => setConfidence(item.value)} disabled={playCount < 1} className={`rounded-lg border px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 ${confidence === item.value ? 'border-indigo-600 bg-indigo-50 text-indigo-950' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>{item.label}</button>)}</div></div>
           <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-slate-500">Le nombre d’écoutes et le temps sont des données de contrôle descriptives, pas des indicateurs de niveau.</p><Button onClick={continueToNextItem} disabled={selectedIndex === null || playCount < 1 || submitting} className="bg-indigo-700 hover:bg-indigo-800">{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyse…</> : <>{isLastItem ? 'Voir mes résultats' : 'Question suivante'}<ArrowRight className="ml-2 h-4 w-4" /></>}</Button></div>

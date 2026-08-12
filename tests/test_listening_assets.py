@@ -1,5 +1,6 @@
 import hashlib
 import json
+import wave
 from pathlib import Path
 
 from src.content.toeic_listening_question_response import (
@@ -28,12 +29,15 @@ def test_listening_manifest_matches_available_original_audio_assets():
         asset = manifest_by_id[item["audio_id"]]
         audio_path = STATIC_AUDIO_DIR / Path(asset["path"]).name
         assert item["audio_status"] == "available"
+        assert asset["path"] == item["audio_url"]
         assert asset["status"] == "available"
         assert asset["script_id"] == item["id"]
         assert asset["script_version"] == item["script_version"]
         assert asset["sha256"]
-        assert asset["duration_seconds"] > 0
         assert audio_path.is_file()
         assert hashlib.sha256(audio_path.read_bytes()).hexdigest() == asset["sha256"]
+        with wave.open(str(audio_path)) as audio_file:
+            measured_duration = audio_file.getnframes() / audio_file.getframerate()
+        assert abs(measured_duration - asset["duration_seconds"]) < 0.5
 
     assert not list(STATIC_AUDIO_DIR.glob("*transcription*"))

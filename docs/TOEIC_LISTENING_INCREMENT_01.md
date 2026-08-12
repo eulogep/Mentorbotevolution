@@ -20,7 +20,7 @@ L’apprenant rattache l’activité à un parcours du domaine `language`. Pour 
 
 ## Provenance audio
 
-Le manifeste `src/content/listening_assets.json` relie chaque actif à un identifiant de script, une version, un hachage SHA-256, une durée, une origine vocale et un état de revue. L’interface n’autorise le démarrage du diagnostic que si les quatre actifs sont marqués `available` et que leurs fichiers sont présents dans la sortie Vite.
+Le manifeste `src/content/listening_assets.json` relie chaque actif à un identifiant de script, une version, un hachage SHA-256, une durée, une origine vocale et un état de revue. L’interface n’autorise le démarrage du diagnostic que si les quatre états `audio_status` fournis par l’API sont `available`. Le test `tests/test_listening_assets.py` vérifie séparément la présence des fichiers statiques, leur hachage et leur durée réelle.
 
 Les quatre extraits sont désormais disponibles et leur intégrité technique est vérifiée. `lqr-01` utilise une voix synthétique générique générée par le service de synthèse du projet. Après indisponibilité de ce service pour les trois autres extraits, `lqr-02` à `lqr-04` ont été générés à partir des scripts originaux par une voix synthétique générique locale eSpeak NG ; cette différence d’origine est explicitement consignée dans le manifeste. Aucun actif n’imite ni ne clone une personne identifiable.
 

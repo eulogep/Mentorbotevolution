@@ -117,20 +117,24 @@ def _analysis_from_responses(responses, item_loader):
     for response in responses:
         grouped[response.target].append(response)
 
+    items_by_id = {
+        response.item_id: item_loader(response.item_id) or {}
+        for response in responses
+    }
     breakdown = []
     recommendations = []
-    remediation_targets = []
+    available_remediation_targets = []
     for target, target_responses in sorted(grouped.items()):
         total = len(target_responses)
         correct = sum(response.is_correct for response in target_responses)
         incorrect = total - correct
         accuracy = round(correct / total, 3) if total else None
         remediation_available = any(
-            not response.is_correct and (item_loader(response.item_id) or {}).get("remediation")
+            not response.is_correct and items_by_id[response.item_id].get("remediation")
             for response in target_responses
         )
         if remediation_available:
-            remediation_targets.append(target)
+            available_remediation_targets.append(target)
         breakdown.append({
             "target": target,
             "items": total,
@@ -168,7 +172,10 @@ def _analysis_from_responses(responses, item_loader):
     return {
         "breakdown": breakdown,
         "recommendations": recommendations,
-        "remediation_targets": remediation_targets,
+        # A card can be useful even when the diagnostic sample is too small to support
+        # a performance recommendation. The UI labels this as an optional, atomic
+        # remediation rather than as a claim about the learner's level.
+        "available_remediation_targets": available_remediation_targets,
     }
 
 
@@ -285,6 +292,8 @@ def submit_diagnostic_attempt(attempt_id):
                 raise ValueError("selected_index must identify one proposed answer") from exc
             if not 0 <= selected_index < len(item["choices"]):
                 raise ValueError("selected_index is outside the available choices")
+            audio_id = None
+            play_count = None
             if item.get("task_type", "").startswith("listening_"):
                 try:
                     play_count = int(raw_response.get("play_count", 0))
@@ -294,12 +303,15 @@ def submit_diagnostic_attempt(attempt_id):
                     raise ValueError("Listen to each audio item before responding")
                 if play_count > item.get("max_plays", diagnostic.get("max_plays_per_item", 1)):
                     raise ValueError("The listening play limit was exceeded")
+                audio_id = item["audio_id"]
             response = DiagnosticResponse(
                 attempt_id=attempt.id,
                 item_id=item["id"],
                 task_type=item["task_type"],
                 target=item["target"],
                 scenario=item["scenario"],
+                audio_id=audio_id,
+                play_count=play_count,
                 selected_index=selected_index,
                 is_correct=selected_index == item["correct_index"],
                 response_time_seconds=_safe_seconds(raw_response.get("response_time_seconds")),
