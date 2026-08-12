@@ -19,6 +19,13 @@ from src.content.toeic_listening_question_response import (
     get_toeic_listening_question_response_diagnostic as load_toeic_listening_question_response,
     get_toeic_listening_question_response_item,
 )
+from src.content.toeic_listening_multi_speaker import (
+    TOEIC_LISTENING_MULTI_SPEAKER_ID,
+    get_toeic_listening_multi_speaker_audio_path,
+    get_toeic_listening_multi_speaker_diagnostic as load_toeic_listening_multi_speaker,
+    get_toeic_listening_multi_speaker_item,
+    get_toeic_listening_multi_speaker_stimulus,
+)
 from src.content.toeic_reading_diagnostic import (
     TOEIC_READING_DIAGNOSTIC_ID,
     get_diagnostic_item as get_toeic_reading_item,
@@ -74,8 +81,31 @@ def _listening_catalog():
     return load_toeic_listening_question_response(), get_toeic_listening_question_response_item
 
 
-def _shared_listening_catalog():
-    return load_toeic_listening_conversations_talks(), get_toeic_listening_conversations_talks_item
+SHARED_LISTENING_CATALOGS = {
+    TOEIC_LISTENING_CONVERSATIONS_TALKS_ID: {
+        "loader": load_toeic_listening_conversations_talks,
+        "item_loader": get_toeic_listening_conversations_talks_item,
+        "stimulus_loader": get_toeic_listening_conversations_talks_stimulus,
+        "audio_path_loader": get_toeic_listening_conversations_talks_audio_path,
+    },
+    TOEIC_LISTENING_MULTI_SPEAKER_ID: {
+        "loader": load_toeic_listening_multi_speaker,
+        "item_loader": get_toeic_listening_multi_speaker_item,
+        "stimulus_loader": get_toeic_listening_multi_speaker_stimulus,
+        "audio_path_loader": get_toeic_listening_multi_speaker_audio_path,
+    },
+}
+
+
+def _shared_listening_catalog(diagnostic_id):
+    catalog = SHARED_LISTENING_CATALOGS.get(diagnostic_id)
+    if not catalog:
+        raise ValueError("Unknown shared Listening diagnostic")
+    return catalog["loader"](), catalog["item_loader"]
+
+
+def _shared_listening_config(diagnostic_id):
+    return SHARED_LISTENING_CATALOGS.get(diagnostic_id)
 
 
 def _catalog_for_diagnostic_id(diagnostic_id):
@@ -83,15 +113,14 @@ def _catalog_for_diagnostic_id(diagnostic_id):
         return _reading_catalog()
     if diagnostic_id == TOEIC_LISTENING_QUESTION_RESPONSE_ID:
         return _listening_catalog()
-    if diagnostic_id == TOEIC_LISTENING_CONVERSATIONS_TALKS_ID:
-        return _shared_listening_catalog()
+    if _shared_listening_config(diagnostic_id):
+        return _shared_listening_catalog(diagnostic_id)
     raise ValueError("Unknown diagnostic")
 
 
 def _stimulus_loader_for_diagnostic_id(diagnostic_id):
-    if diagnostic_id == TOEIC_LISTENING_CONVERSATIONS_TALKS_ID:
-        return get_toeic_listening_conversations_talks_stimulus
-    return None
+    catalog = _shared_listening_config(diagnostic_id)
+    return catalog["stimulus_loader"] if catalog else None
 
 
 def _public_item(item):
@@ -379,6 +408,39 @@ def start_toeic_listening_conversations_talks():
         return jsonify({"status": "error", "message": "Unable to start the shared Listening diagnostic."}), 500
 
 
+@diagnostic_bp.route("/toeic-listening-multi-speaker", methods=["GET"])
+@jwt_required()
+def get_toeic_listening_multi_speaker():
+    """Expose increment-three shared Listening metadata with a strict public whitelist."""
+    diagnostic = load_toeic_listening_multi_speaker()
+    return _no_store({
+        "status": "success",
+        "diagnostic": _public_diagnostic_metadata(diagnostic),
+        "stimuli": [_public_shared_listening_stimulus(stimulus) for stimulus in diagnostic["stimuli"]],
+        "items": [_public_shared_listening_item(item) for item in diagnostic["items"]],
+    })
+
+
+@diagnostic_bp.route("/toeic-listening-multi-speaker/start", methods=["POST"])
+@jwt_required()
+def start_toeic_listening_multi_speaker():
+    """Create a three-question-per-stimulus Listening attempt for one language path."""
+    try:
+        payload = _start_attempt(
+            TOEIC_LISTENING_MULTI_SPEAKER_ID,
+            load_toeic_listening_multi_speaker,
+            _public_shared_listening_item,
+            _public_shared_listening_stimulus,
+        )
+        return _no_store(payload, 201)
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": "Unable to start the multi-speaker Listening diagnostic."}), 500
+
+
 @diagnostic_bp.route("/attempts/<int:attempt_id>/stimuli/<string:stimulus_id>/playback", methods=["POST"])
 @jwt_required()
 def register_listening_stimulus_playback(attempt_id, stimulus_id):
@@ -387,11 +449,12 @@ def register_listening_stimulus_playback(attempt_id, stimulus_id):
         attempt = _owned_attempt_or_404(attempt_id)
         if not attempt:
             return jsonify({"status": "error", "message": "Diagnostic attempt not found"}), 404
-        if attempt.diagnostic_id != TOEIC_LISTENING_CONVERSATIONS_TALKS_ID:
+        shared_catalog = _shared_listening_config(attempt.diagnostic_id)
+        if not shared_catalog:
             return jsonify({"status": "error", "message": "This attempt has no shared Listening stimuli"}), 404
         if attempt.status != "in_progress":
             return jsonify({"status": "error", "message": "This diagnostic attempt has already been submitted"}), 409
-        stimulus = get_toeic_listening_conversations_talks_stimulus(stimulus_id)
+        stimulus = shared_catalog["stimulus_loader"](stimulus_id)
         if not stimulus:
             raise ValueError("Unknown listening stimulus")
         if stimulus.get("audio_status") != "available":
@@ -439,7 +502,8 @@ def register_listening_stimulus_playback(attempt_id, stimulus_id):
 def get_shared_listening_audio(attempt_id, stimulus_id):
     """Serve one private WAV only to its attempt owner after server-authorized playback."""
     attempt = _owned_attempt_or_404(attempt_id)
-    if not attempt or attempt.diagnostic_id != TOEIC_LISTENING_CONVERSATIONS_TALKS_ID:
+    shared_catalog = _shared_listening_config(attempt.diagnostic_id) if attempt else None
+    if not attempt or not shared_catalog:
         return jsonify({"status": "error", "message": "Diagnostic attempt not found"}), 404
     playback = DiagnosticStimulusPlayback.query.filter_by(
         attempt_id=attempt.id,
@@ -447,7 +511,7 @@ def get_shared_listening_audio(attempt_id, stimulus_id):
     ).first()
     if not playback:
         return jsonify({"status": "error", "message": "Authorize the single listening playback before requesting audio"}), 409
-    audio_path = get_toeic_listening_conversations_talks_audio_path(stimulus_id)
+    audio_path = shared_catalog["audio_path_loader"](stimulus_id)
     if not audio_path:
         return jsonify({"status": "error", "message": "This audio stimulus is not available"}), 404
     response = send_file(audio_path, mimetype="audio/wav", conditional=False, max_age=0)
@@ -567,7 +631,7 @@ def submit_diagnostic_attempt(attempt_id):
         }
         if attempt.diagnostic_id == TOEIC_LISTENING_QUESTION_RESPONSE_ID:
             result["review_items"] = _listening_review_items(created_responses, item_loader)
-        if attempt.diagnostic_id == TOEIC_LISTENING_CONVERSATIONS_TALKS_ID:
+        if _shared_listening_config(attempt.diagnostic_id):
             return _no_store(result)
         return jsonify(result)
     except ValueError as exc:
@@ -583,12 +647,13 @@ def submit_diagnostic_attempt(attempt_id):
 def get_shared_listening_review(attempt_id):
     """Expose transcript and corrections only after the owner has completed the attempt."""
     attempt = _owned_attempt_or_404(attempt_id)
-    if not attempt or attempt.diagnostic_id != TOEIC_LISTENING_CONVERSATIONS_TALKS_ID:
+    shared_catalog = _shared_listening_config(attempt.diagnostic_id) if attempt else None
+    if not attempt or not shared_catalog:
         return jsonify({"status": "error", "message": "Diagnostic attempt not found"}), 404
     if attempt.status != "completed":
         return jsonify({"status": "error", "message": "Submit the diagnostic before the post-submission review"}), 409
 
-    diagnostic = load_toeic_listening_conversations_talks()
+    diagnostic = shared_catalog["loader"]()
     responses_by_item = {response.item_id: response for response in attempt.responses}
     items_by_stimulus = defaultdict(list)
     for item in diagnostic["items"]:

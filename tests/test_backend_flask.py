@@ -16,6 +16,7 @@ from src.content.toeic_listening_conversations_talks import (  # noqa: E402
     get_toeic_listening_conversations_talks_item,
 )
 from src.content.toeic_listening_question_response import get_toeic_listening_question_response_item  # noqa: E402
+from src.content.toeic_listening_multi_speaker import get_toeic_listening_multi_speaker_item  # noqa: E402
 from src.content.toeic_reading_diagnostic import get_diagnostic_item  # noqa: E402
 from src.models.user import (  # noqa: E402
     Card,
@@ -791,6 +792,124 @@ def test_shared_listening_stimuli_require_server_playback_and_delay_review(clien
         f"/api/diagnostic/attempts/{attempt_id}/create-remediation",
         headers=auth_headers,
         json={"targets": ["listening_detail"]},
+    )
+    assert remediation_response.status_code == 201
+    assert remediation_response.get_json()["created_count"] == 2
+    assert Card.query.filter_by(subject_id=subject_id).count() == 2
+
+
+def test_multi_speaker_listening_uses_three_questions_per_private_stimulus(client, auth_headers):
+    path_response = client.post(
+        "/api/mastery/create-path",
+        headers=auth_headers,
+        json={
+            "name": "Listening approfondi TOEIC",
+            "domain": "language",
+            "description": "Parcours de test pour stimuli professionnels originaux à trois questions.",
+            "objective_type": "competency",
+            "objective_label": "Comprendre des échanges professionnels continus.",
+        },
+    )
+    assert path_response.status_code == 201
+    subject_id = path_response.get_json()["subject"]["id"]
+
+    catalog_response = client.get(
+        "/api/diagnostic/toeic-listening-multi-speaker",
+        headers=auth_headers,
+    )
+    assert catalog_response.status_code == 200
+    assert catalog_response.headers["Cache-Control"] == "no-store"
+    catalog = catalog_response.get_json()
+    assert catalog["diagnostic"]["id"] == "toeic-listening-multi-speaker-v1"
+    assert len(catalog["stimuli"]) == 4
+    assert len(catalog["items"]) == 12
+    assert {item["target"] for item in catalog["items"]} == {
+        "listening_detail", "listening_main_idea", "listening_inference"
+    }
+    assert all("audio_url" not in stimulus for stimulus in catalog["stimuli"])
+    assert all("speaker_transcript" not in stimulus for stimulus in catalog["stimuli"])
+    assert all("choices" not in item and "correct_index" not in item for item in catalog["items"])
+
+    start_response = client.post(
+        "/api/diagnostic/toeic-listening-multi-speaker/start",
+        headers=auth_headers,
+        json={"subject_id": subject_id},
+    )
+    assert start_response.status_code == 201
+    started = start_response.get_json()
+    attempt_id = started["attempt"]["id"]
+    assert started["attempt"]["content_version"] == "1.0.0"
+    assert {stimulus["id"] for stimulus in started["stimuli"]} == {
+        "conversation-01", "conversation-02", "talk-01", "talk-02"
+    }
+    assert all(stimulus["audio_url"].startswith(f"/api/diagnostic/attempts/{attempt_id}/stimuli/") for stimulus in started["stimuli"])
+    assert all(sum(item["stimulus_id"] == stimulus["id"] for item in started["items"]) == 3 for stimulus in started["stimuli"])
+
+    assert client.get(started["stimuli"][0]["audio_url"], headers=auth_headers).status_code == 409
+    premature_review = client.get(
+        f"/api/diagnostic/attempts/{attempt_id}/listening-review",
+        headers=auth_headers,
+    )
+    assert premature_review.status_code == 409
+
+    responses = []
+    for public_item in started["items"]:
+        private_item = get_toeic_listening_multi_speaker_item(public_item["id"])
+        responses.append({
+            "item_id": private_item["id"],
+            "selected_index": (private_item["correct_index"] + 1) % len(private_item["choices"]),
+            "response_time_seconds": 8,
+            "confidence": 2,
+        })
+
+    missing_playback = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/submit",
+        headers=auth_headers,
+        json={"responses": responses, "duration_seconds": 180},
+    )
+    assert missing_playback.status_code == 400
+    assert "Listen to each audio stimulus" in missing_playback.get_json()["message"]
+
+    for stimulus in started["stimuli"]:
+        playback_response = client.post(
+            f"/api/diagnostic/attempts/{attempt_id}/stimuli/{stimulus['id']}/playback",
+            headers=auth_headers,
+            json={},
+        )
+        assert playback_response.status_code == 201
+        playback = playback_response.get_json()["playback"]
+        assert playback["play_count"] == 1
+        audio_response = client.get(playback["audio_url"], headers=auth_headers)
+        assert audio_response.status_code == 200
+        assert audio_response.headers["Cache-Control"] == "no-store"
+        assert audio_response.mimetype == "audio/wav"
+        assert audio_response.data.startswith(b"RIFF")
+
+    submitted = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/submit",
+        headers=auth_headers,
+        json={"responses": responses, "duration_seconds": 180},
+    )
+    assert submitted.status_code == 200
+    assert submitted.headers["Cache-Control"] == "no-store"
+    assert submitted.get_json()["attempt"]["total_items"] == 12
+    assert submitted.get_json()["attempt"]["correct_count"] == 0
+    assert "speaker_transcript" not in submitted.get_data(as_text=True)
+
+    review_response = client.get(
+        f"/api/diagnostic/attempts/{attempt_id}/listening-review",
+        headers=auth_headers,
+    )
+    assert review_response.status_code == 200
+    review = review_response.get_json()
+    assert len(review["review_stimuli"]) == 4
+    assert all(len(stimulus["items"]) == 3 for stimulus in review["review_stimuli"])
+    assert all(stimulus["speaker_transcript"] for stimulus in review["review_stimuli"])
+
+    remediation_response = client.post(
+        f"/api/diagnostic/attempts/{attempt_id}/create-remediation",
+        headers=auth_headers,
+        json={"targets": ["listening_inference"]},
     )
     assert remediation_response.status_code == 201
     assert remediation_response.get_json()["created_count"] == 2
